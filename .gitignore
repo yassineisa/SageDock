@@ -1,0 +1,128 @@
+# ─── Dependencies ──────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+
+# ─── Build output ──────────────────────────────────────────────────
+/dist/
+/dist-ssr/
+*.tsbuildinfo
+
+# src-tauri/.gitignore covers src-tauri/target. This catches a cargo
+# invocation from the repository root.
+/target/
+**/target/
+
+# ─── Installer and packaging output ────────────────────────────────
+# Each SageDock MSI is ~1.4 GB. Previously these were excluded only by
+# living inside target/; anchoring by extension means a copy placed
+# anywhere in the tree still cannot be staged.
+*.msi
+*.msix
+*.appx
+*.exe
+*.nsis
+*.wixobj
+*.wixpdb
+*.msm
+*.cab
+
+# ─── Bundled runtime image ─────────────────────────────────────────
+# Multi-gigabyte build input, checksum-pinned in trusted-runtimes.json
+# and shipped inside the installer. Never through git, never through LFS.
+src-tauri/runtime/
+sagedock-runtime-*
+*.tar
+*.tar.xz
+*.tar.gz
+*.tgz
+*.7z
+
+# ZIP is SageDock's own backup container format. A test backup written
+# into the tree would otherwise be staged.
+*.zip
+
+# ─── Native / MSVC intermediates ───────────────────────────────────
+*.pdb
+*.lib
+*.rlib
+*.dll
+*.so
+*.dylib
+*.obj
+*.o
+*.exp
+*.idb
+*.ilk
+*.dmp
+
+# ─── Secrets and signing material ──────────────────────────────────
+# Nothing of this kind exists in the tree today. There was also no rule
+# against it, and a code-signing certificate is the one file that must
+# never reach a shared remote.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.cer
+*.crt
+*.jks
+*.keystore
+secrets.json
+credentials.json
+TAURI_SIGNING_PRIVATE_KEY*
+*.tauri-signing-key
+
+# ─── Jupyter / Python ──────────────────────────────────────────────
+# Jupyter runtime JSON carries live server tokens; backup.rs already
+# excludes .jupyter for exactly this reason.
+.jupyter/
+jupyter_runtime/
+jupyter_server_config.json
+jupyter_notebook_config.json
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ─── Test output ───────────────────────────────────────────────────
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+# docs/qa/*.png is intentional screenshot evidence — tracked on purpose.
+
+# ─── Logs ──────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── Editors ───────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+.vs/
+.idea/
+.claude/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── OS and sync noise ─────────────────────────────────────────────
+# desktop.ini and Thumbs.db propagate through OneDrive-hosted folders.
+desktop.ini
+Thumbs.db
+ehthumbs.db
+.DS_Store
+*.local
+*.orig
+*.rej
+*.bak

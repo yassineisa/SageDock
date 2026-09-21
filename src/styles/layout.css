@@ -1,0 +1,1437 @@
+/* SageDock layout — a Windows desktop application informed by Metro.
+ *
+ * Structure: a compact navigation pane on the left, a page header acting as a command bar,
+ * and content in cards on a 4px grid. Everything is flat and authentically digital: no
+ * gradients, no glass, no imitation of physical surfaces. Elevation appears only on
+ * transient surfaces, where it explains that something floats above the page.
+ */
+
+/* ============ shell ============ */
+.app-shell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.nav-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  background: var(--layer);
+  border-right: 1px solid var(--stroke);
+  padding: var(--sp-3);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2) var(--sp-4);
+  text-decoration: none;
+  color: var(--text);
+}
+.brand img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+.brand-name {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 600;
+  font-family: var(--font-display);
+}
+.brand-sub {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  font-weight: 400;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 36px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-control);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 20px;
+}
+/* Not transitioned, for the same reason as .btn: the selected item has a filled
+   background, so animating it across a theme change strands a near-white label on a
+   still-light fill. Hover on an unselected item is transparent-to-subtle, which is a
+   change of surface rather than of contrast, and reads fine instantly. */
+.nav a:hover {
+  background: var(--subtle);
+}
+.nav a.active {
+  background: var(--subtle);
+  font-weight: 600;
+}
+/* The Windows selection marker: a short accent bar on the leading edge. */
+.nav a.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--accent-text);
+}
+.nav a .icon {
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+.nav a.active .icon {
+  color: var(--accent-text);
+}
+
+.nav-foot {
+  margin-top: auto;
+  padding: var(--sp-3) var(--sp-2) var(--sp-1);
+  border-top: 1px solid var(--stroke);
+}
+.nav-foot p {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  margin-top: var(--sp-1);
+}
+
+.app-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.app-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-6) var(--sp-8) var(--sp-8);
+}
+.app-content__inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+/* ============ page header / command bar ============ */
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.page-head h1 {
+  margin-bottom: var(--sp-1);
+}
+.page-head p {
+  max-width: 64ch;
+}
+
+.command-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--stroke);
+}
+.command-bar .spacer {
+  flex: 1 1 auto;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.section-head h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.count {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============ icons ============ */
+.icon {
+  font-family: var(--font-icon);
+  display: inline-block;
+  text-align: center;
+  font-style: normal;
+  font-weight: 400;
+  font-variant: normal;
+  text-transform: none;
+  flex-shrink: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============ buttons ============ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 32px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--stroke-strong);
+  background: var(--layer);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+}
+/* Deliberately not transitioned. Animating a filled control's background while its text
+   colour changes instantly means that switching theme leaves white labels on a still-white
+   button for the length of the transition — unreadable, and not only in a screenshot.
+   Motion stays on surfaces whose default background is transparent, where there is
+   nothing to animate away from. */
+.btn:hover:not(:disabled) {
+  background: var(--subtle);
+}
+.btn:active:not(:disabled) {
+  background: var(--layer-alt);
+}
+.btn:disabled {
+  color: var(--text-disabled);
+  background: var(--layer-alt);
+  border-color: var(--stroke);
+}
+.btn .icon {
+  color: var(--text-2);
+}
+.btn:disabled .icon {
+  color: var(--text-disabled);
+}
+
+.btn-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+.btn-accent:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-accent:active:not(:disabled) {
+  background: var(--accent-pressed);
+  border-color: var(--accent-pressed);
+}
+.btn-accent .icon {
+  color: var(--on-accent);
+}
+.btn-accent:disabled {
+  background: var(--layer-alt);
+  border-color: var(--stroke);
+  color: var(--text-disabled);
+}
+
+.btn-subtle {
+  border-color: transparent;
+  background: transparent;
+}
+.btn-subtle:hover:not(:disabled) {
+  background: var(--subtle);
+}
+.btn-subtle:disabled {
+  background: transparent;
+}
+
+.btn-row {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ============ cards ============ */
+.card {
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  padding: var(--sp-5);
+  box-shadow: var(--elev-card);
+}
+
+/* ============ environment status + launcher ============ */
+/* One card: the environment's live status and the two actions that act on it (open
+   JupyterLab, stop SageMath), rather than two stacked cards repeating the same context. */
+.env-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-surface);
+  padding: var(--sp-4) var(--sp-5);
+  box-shadow: var(--elev-card);
+}
+.env-text {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.env-state {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.env-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neutral-dot);
+  flex-shrink: 0;
+}
+.env-dot.is-running {
+  background: var(--ok);
+}
+.env-dot.is-unknown {
+  background: var(--caution);
+}
+.env-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+/* The explanation of what the status means and what stopping does, which used to sit as a
+   permanent paragraph, now lives entirely in this icon's native tooltip. */
+.info-tip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-3);
+  cursor: help;
+}
+.info-tip:hover,
+.info-tip:focus-visible {
+  color: var(--text-2);
+  background: var(--subtle);
+}
+
+/* ============ workspaces ============ */
+/* auto-fit, not auto-fill: empty tracks collapse so two cards fill the row instead of
+   huddling on the left with a phantom column beside them. */
+.ws-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--sp-3);
+}
+.workspace-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  padding: var(--sp-4);
+  box-shadow: var(--elev-card);
+  transition: border-color var(--motion-fast) var(--ease);
+}
+.workspace-card:hover {
+  border-color: var(--stroke-strong);
+}
+.workspace-card.is-active {
+  border-left: 3px solid var(--accent);
+  padding-left: calc(var(--sp-4) - 2px);
+}
+.ws-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+.ws-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius-control);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+}
+.ws-head {
+  min-width: 0;
+  flex: 1;
+}
+.ws-head h3 {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  overflow-wrap: anywhere;
+}
+/* The name and its rename control share a line, so the pencil sits immediately after
+   whatever the name currently is rather than at a fixed offset, and moves when it changes. */
+.ws-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.ws-title h3 {
+  min-width: 0;
+}
+/* Deliberately matched to .ws-meta below — the same 12px and the same muted colour as
+   "Opened today" — so the pencil reads as quiet metadata beside the name, not as a second
+   heading competing with it. */
+.ws-edit {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 2px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  border-radius: var(--radius-control);
+  color: var(--text-3);
+  transition:
+    color var(--motion-fast) var(--ease),
+    background var(--motion-fast) var(--ease);
+}
+.ws-edit:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--subtle);
+}
+.ws-edit:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.ws-meta {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.ws-badge {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--accent-subtle);
+  border-radius: var(--radius-control);
+  padding: 2px var(--sp-2);
+  white-space: nowrap;
+}
+.ws-path {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+.ws-note {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--caution);
+  background: var(--caution-bg);
+  border-radius: var(--radius-control);
+  padding: var(--sp-2) var(--sp-3);
+}
+.ws-note .icon {
+  color: var(--caution);
+  margin-top: 1px;
+}
+.ws-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+.ws-rename {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* ============ drop target ============ */
+/* Files dragged in from Windows land in the workspace being worked in. The highlight is
+   what tells the student where the drop will go; the copy itself happens in Rust, which is
+   the only side that ever sees the dropped paths. */
+.drop-zone {
+  outline: 2px dashed transparent;
+  outline-offset: var(--sp-2);
+  border-radius: var(--radius-surface);
+  transition:
+    background var(--motion-fast) var(--ease),
+    outline-color var(--motion-fast) var(--ease);
+}
+.drop-zone.is-dropping {
+  outline-color: var(--accent);
+  background: var(--accent-subtle);
+}
+.drop-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--accent-text);
+}
+
+/* ============ inputs ============ */
+label.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.input {
+  width: 100%;
+  min-height: 32px;
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--layer-alt);
+  color: var(--text);
+  border: 1px solid var(--stroke-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  line-height: 20px;
+  outline: none;
+}
+.input::placeholder {
+  color: var(--text-3);
+}
+.input:focus {
+  border-bottom-color: var(--accent-text);
+  background: var(--layer);
+}
+/* The icon sits inside the field, so the container must establish the positioning context
+   — otherwise it anchors to the page and floats away from its input. */
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 260px;
+  max-width: 100%;
+}
+.search-field .icon {
+  position: absolute;
+  left: var(--sp-3);
+  color: var(--text-3);
+  pointer-events: none;
+}
+.search-field .input {
+  padding-left: var(--sp-8);
+}
+
+/* ============ notebook list ============ */
+.list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  overflow: hidden;
+  background: var(--layer);
+}
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--stroke);
+  color: var(--text);
+  transition: background var(--motion-fast) var(--ease);
+}
+.list-row:last-child {
+  border-bottom: 0;
+}
+.list-row:hover:not(:disabled) {
+  background: var(--subtle);
+}
+.list-row .icon {
+  color: var(--text-2);
+}
+/* Marks an option that replaces or discards something (e.g. overwriting a notebook), so it
+   reads as a different kind of choice from the others in the same list before it's clicked. */
+.list-row.is-danger strong {
+  color: var(--caution);
+}
+.list-row.is-danger .icon {
+  color: var(--caution);
+}
+.list-row strong {
+  display: block;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+.list-row small {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+}
+.list-row time {
+  margin-left: auto;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.list-grow {
+  min-width: 0;
+  flex: 1;
+}
+
+/* ============ notebook rows (Recently Opened, Downloads) ============ */
+/* `.list-row` above already supplies the flex row, padding, border and hover background;
+   these add the split between an inner open-button and a trailing area that swaps its
+   content on hover instead of the whole row being one button. */
+.list-row-open {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.notebook-row-trailing {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: grid;
+}
+/* Both occupy the same grid cell so toggling which is visible causes no layout shift. */
+.notebook-row-date,
+.notebook-row-actions {
+  grid-area: 1 / 1;
+}
+.notebook-row-date {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.notebook-row-actions {
+  display: none;
+  gap: var(--sp-1);
+}
+.notebook-row:hover .notebook-row-actions,
+.notebook-row:focus-within .notebook-row-actions {
+  display: flex;
+}
+.notebook-row:hover .notebook-row-date,
+.notebook-row:focus-within .notebook-row-date {
+  display: none;
+}
+.notebook-row-action {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-2);
+}
+.notebook-row-action:hover:not(:disabled) {
+  background: var(--subtle);
+  color: var(--text);
+}
+.notebook-row-action.is-danger:hover:not(:disabled) {
+  color: var(--caution);
+}
+
+/* ============ empty states ============ */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-10) var(--sp-6);
+  text-align: center;
+}
+.empty .icon {
+  color: var(--text-3);
+}
+.empty h3 {
+  font-size: 14px;
+  line-height: 20px;
+}
+.empty p {
+  max-width: 44ch;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* ============ setup ============ */
+.setup-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+.setup-head .icon {
+  color: var(--accent-text);
+  margin-top: 2px;
+}
+.setup-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-5);
+  margin: var(--sp-4) 0;
+}
+.fact {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.fact .icon {
+  color: var(--ok);
+}
+.progress-block {
+  margin: var(--sp-4) 0;
+  padding: var(--sp-4);
+  background: var(--layer-alt);
+  border-radius: var(--radius-control);
+}
+.progress-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.progress-block p {
+  margin: var(--sp-2) 0 var(--sp-3);
+  font-size: 12px;
+  line-height: 16px;
+}
+progress {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--subtle);
+}
+progress::-webkit-progress-bar {
+  background: var(--subtle);
+  border-radius: 2px;
+}
+progress::-webkit-progress-value {
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* ============ status / feedback ============ */
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--stroke-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.task-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--accent-subtle);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  line-height: 20px;
+}
+.task-bar .trailing {
+  margin-left: auto;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+
+.banner {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--stroke);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius-control);
+  background: var(--danger-bg);
+}
+.banner--warning {
+  border-left-color: var(--caution);
+  background: var(--caution-bg);
+}
+.banner > .icon {
+  color: var(--danger);
+  margin-top: 2px;
+}
+.banner--warning > .icon {
+  color: var(--caution);
+}
+.banner__body {
+  min-width: 0;
+  flex: 1;
+}
+.banner__title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.banner__message {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+.banner pre {
+  margin-top: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-2);
+}
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--ok-bg);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  line-height: 20px;
+}
+.notice .icon {
+  color: var(--ok);
+}
+.notice button {
+  margin-left: auto;
+  color: var(--text-2);
+}
+
+/* ============ dialogs (transient: 8px radius + elevation) ============ */
+.dialog {
+  max-width: 520px;
+  width: calc(100% - 48px);
+  padding: var(--sp-6);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  background: var(--layer);
+  color: var(--text);
+  box-shadow: var(--elev-flyout);
+}
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+.dialog h2 {
+  margin-bottom: var(--sp-3);
+}
+.dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+.dialog-body strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-top: var(--sp-6);
+}
+
+/* ============ settings ============ */
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  padding: var(--sp-4) var(--sp-5);
+}
+.setting-row .icon {
+  color: var(--text-2);
+}
+.setting-main {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  min-width: 0;
+  flex: 1;
+}
+.setting-row p {
+  font-size: 12px;
+  line-height: 16px;
+  margin-top: 2px;
+}
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--stroke-strong);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+}
+.segmented button {
+  min-height: 30px;
+  padding: 0 var(--sp-4);
+  font-size: 14px;
+  line-height: 20px;
+  border-right: 1px solid var(--stroke-strong);
+  background: var(--layer);
+  color: var(--text);
+}
+.segmented button:last-child {
+  border-right: 0;
+}
+.segmented button:hover:not(:disabled) {
+  background: var(--subtle);
+}
+/* Selection has to survive hover. `:hover:not(:disabled)` scores (0,3,1) against a bare
+   attribute selector's (0,2,1), so without the second selector here, pointing at the
+   option you already chose repaints it as an unselected one and hides which setting is
+   active — on the one control whose entire purpose is showing that. */
+.segmented button[aria-pressed="true"],
+.segmented button[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+/* ============ tools / actions grid ============ */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sp-3);
+}
+.tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  padding: var(--sp-4);
+  box-shadow: var(--elev-card);
+}
+.tool-top {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.tool-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-control);
+  background: var(--layer-alt);
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+.tool-card p {
+  font-size: 12px;
+  line-height: 16px;
+}
+.tool-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-top: auto;
+  padding-top: var(--sp-2);
+}
+.status-ok {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ok);
+  font-weight: 600;
+}
+
+/* Tool state. Four tones, not two: "unknown" must be visually distinct from "not
+   installed", because SageDock not having looked is a different fact from a tool being
+   absent, and a student acts differently on each. */
+.tool-state {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+.tool-state.is-ok {
+  color: var(--ok);
+}
+.tool-state.is-warn {
+  color: var(--caution);
+}
+.tool-state.is-off {
+  color: var(--text-3);
+}
+.tool-state.is-unknown {
+  color: var(--text-2);
+}
+
+/* Each program in a group is listed on its own row: "build tools" is three independent
+   programs, and one tick for all three hides a missing one. */
+.tool-components {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--stroke);
+}
+.component-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.component-row .icon {
+  flex-shrink: 0;
+}
+.component-row.is-ok .icon {
+  color: var(--ok);
+}
+.component-row.is-off .icon {
+  color: var(--text-3);
+}
+.component-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.component-version {
+  margin-left: auto;
+  min-width: 0;
+  color: var(--text-3);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Home's compact capability strip. Chips wrap rather than scroll, so the row still holds
+   at the 860px minimum window width. */
+.capability-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+.capability {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-control);
+  background: var(--layer-alt);
+  font-size: 12px;
+  line-height: 16px;
+}
+.capability .icon {
+  flex-shrink: 0;
+}
+.capability small {
+  color: var(--text-3);
+}
+.capability.is-ok .icon {
+  color: var(--ok);
+}
+.capability.is-warn .icon {
+  color: var(--caution);
+}
+.capability.is-off .icon,
+.capability.is-unknown .icon {
+  color: var(--text-3);
+}
+
+/* ============ action rows (recovery) ============ */
+.action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  padding: var(--sp-4) var(--sp-5);
+}
+.action-row > div {
+  min-width: 0;
+  flex: 1 1 380px;
+}
+.action-row p {
+  font-size: 12px;
+  line-height: 16px;
+  margin-top: 2px;
+}
+
+/* ============ diagnostics ============ */
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--stroke);
+}
+.check-row:last-child {
+  border-bottom: 0;
+}
+.check-row strong {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.check-row p {
+  font-size: 12px;
+  line-height: 16px;
+  margin-top: 2px;
+}
+.check-ok .icon {
+  color: var(--ok);
+}
+.check-warn .icon {
+  color: var(--caution);
+}
+details > summary {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--layer-alt);
+  border-radius: var(--radius-control);
+  padding: var(--sp-3);
+  color: var(--text-2);
+}
+
+/* ============ help / about ============ */
+.guide {
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  margin-bottom: var(--sp-2);
+}
+.guide > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  list-style: none;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.guide > summary::-webkit-details-marker {
+  display: none;
+}
+.guide > summary .icon {
+  color: var(--text-2);
+  transition: transform var(--motion-normal) var(--ease);
+}
+.guide[open] > summary .icon {
+  transform: rotate(90deg);
+}
+.guide-tag {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--text-3);
+}
+.guide > p {
+  padding: 0 var(--sp-4) var(--sp-4);
+  font-size: 14px;
+  line-height: 20px;
+  max-width: 80ch;
+}
+.about-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-8);
+  margin: var(--sp-4) 0;
+}
+.about-grid dt {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+}
+.about-grid dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+/* Attribution rows. Static deliberately: no hover fill, because nothing in the list is
+   clickable, and no text-transform, because open-source project names carry deliberate
+   casing (pandas, scikit-learn, conda-forge) that an attribution must not alter. */
+.credit-list {
+  margin: var(--sp-3) 0 0;
+  border-top: 1px solid var(--stroke);
+}
+.credit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-1) var(--sp-4);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--stroke);
+}
+.credit-row dt {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.credit-row dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+
+/* ============ responsive: minWidth is 860, so this must hold there ============ */
+.workspace-description {
+  margin-bottom: var(--sp-4);
+}
+
+@media (max-width: 1100px) {
+  .app-shell {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .app-content {
+    padding: var(--sp-5) var(--sp-5) var(--sp-8);
+  }
+  .ws-list {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+  .nav a {
+    justify-content: center;
+    padding: 0;
+    gap: 0;
+  }
+  .nav a span:not(.icon) {
+    display: none;
+  }
+  .brand {
+    justify-content: center;
+    padding: var(--sp-2) 0 var(--sp-4);
+  }
+  .brand-text {
+    display: none;
+  }
+  .nav-foot {
+    display: none;
+  }
+  .ws-list {
+    grid-template-columns: 1fr;
+  }
+  .search-field {
+    width: 100%;
+  }
+}
+
+/* ============ first-run introduction ============ */
+/* Rendered instead of the app shell, so it owns the whole window and centres one column.
+   Deliberately not a dialog: there is nothing behind it worth showing through. */
+.onboarding {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+  background: var(--bg);
+}
+.onboarding-panel {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  background: var(--layer);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-surface);
+  padding: var(--sp-8);
+  box-shadow: var(--elev-card);
+}
+.onboarding-brand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--stroke);
+  padding-bottom: var(--sp-3);
+}
+.onboarding-progress {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+}
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  /* Holds the panel's height steady across steps so the buttons don't jump under the
+     cursor as the student pages through. */
+  min-height: 210px;
+}
+.onboarding-step > .icon {
+  color: var(--accent-text);
+}
+.onboarding-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  margin-top: var(--sp-2);
+}
+.onboarding-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+.onboarding-field label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.onboarding-field label strong {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.onboarding-field label span {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  border-top: 1px solid var(--stroke);
+  padding-top: var(--sp-4);
+}
+.onboarding-actions .spacer {
+  flex: 1;
+}
+
+/* A native select styled as an input, used for the browser choice in Settings and in the
+   introduction. Kept to the control radius, like every other persistent control. */
+.setting-select,
+.onboarding-field select {
+  min-width: 200px;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .onboarding-panel {
+    padding: var(--sp-5);
+  }
+  .onboarding-actions {
+    flex-wrap: wrap;
+  }
+}

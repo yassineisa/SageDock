@@ -1,0 +1,261 @@
+/* SageDock design tokens — Metro foundation, Windows 11 conventions.
+ *
+ * Metro's rules, from Microsoft's own description: typography carries the hierarchy,
+ * content comes before chrome, geometry stays simple, controls are authentically digital
+ * (flat, crisp, no imitation of physical materials), and motion explains state changes.
+ *
+ * Windows 11 supplies the specifics:
+ *   - Segoe UI Variable, Regular for text and Semibold for titles. Bold and Italic are
+ *     deliberately absent from the Windows type ramp; Semibold carries emphasis instead.
+ *   - Sentence case everywhere, including titles.
+ *   - 4px corner radius on persistent controls; 8px on transient surfaces (dialogs,
+ *     flyouts). Nothing else rounds.
+ *   - Minimum legible sizes: 14px Semibold, 12px Regular.
+ *
+ * Accent is Concordia burgundy. Status colours are separate from the accent on purpose —
+ * an accent that also means "healthy" cannot be used for a primary button next to a
+ * warning without the colour saying two things at once.
+ */
+:root {
+  color-scheme: light;
+
+  /* --- neutrals: warm iron greys, never blue-grey, never pure white or black --- */
+  --bg: #f5f4f2;
+  --layer: #fbfaf9; /* raised: cards, list surfaces */
+  --layer-alt: #eeedea; /* recessed: inputs, code, progress track */
+  --subtle: #e8e6e2; /* hover fill on quiet controls */
+  --stroke: #e1dfdb; /* hairline divider */
+  --stroke-strong: #c9c6c0; /* control border */
+  --text: #1b1a19;
+  --text-2: #5d5a55;
+  --text-3: #8a8681;
+  --text-disabled: #a8a49f;
+
+  /* --- accent: Concordia burgundy ---
+   * Two tokens, because an accent used as a *fill* and an accent used as *foreground*
+   * have opposite contrast requirements. A fill must be dark enough for white text; a
+   * marker or icon must be light enough to read against the page. On light backgrounds
+   * one value satisfies both; on dark they diverge sharply. */
+  --accent: #912338; /* button fill, paired with --on-accent */
+  --accent-hover: #7a1d2f;
+  --accent-pressed: #631826;
+  --accent-text: #912338; /* accent as foreground: icons, selection bar, badges */
+  --accent-subtle: #f5e9eb;
+  --on-accent: #ffffff;
+
+  /* --- status: independent of accent, never colour alone --- */
+  --ok: #0f7b34;
+  --ok-bg: #eaf4ec;
+  --caution: #9d5d00;
+  --caution-bg: #fbf1e3;
+  --danger: #b02a1c;
+  --danger-bg: #fbeceb;
+  --neutral-dot: #8a8681;
+
+  /* --- geometry: Windows 11 radius rule --- */
+  --radius-control: 4px;
+  --radius-surface: 8px;
+
+  /* --- elevation: only where it clarifies layering. No heavy drop shadows. --- */
+  --elev-card: 0 1px 2px rgba(27, 26, 25, 0.05);
+  --elev-flyout: 0 8px 16px rgba(27, 26, 25, 0.14);
+
+  /* --- 4px spacing grid --- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* --- type --- */
+  --font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-display:
+    "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", Consolas, "Courier New", monospace;
+  --font-icon: "Segoe Fluent Icons", "Segoe MDL2 Assets", sans-serif;
+
+  /* --- motion: short and explanatory, per Metro --- */
+  --motion-fast: 90ms;
+  --motion-normal: 150ms;
+  --ease: cubic-bezier(0.33, 0, 0.67, 1);
+
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  background: var(--bg);
+  color: var(--text);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1c1b1a;
+  --layer: #252423;
+  --layer-alt: #2d2c2b;
+  --subtle: #323130;
+  --stroke: #3b3a39;
+  --stroke-strong: #55534f;
+  --text: #f3f2f1;
+  --text-2: #c8c6c4;
+  --text-3: #9a9792;
+  --text-disabled: #6e6b68;
+
+  /* Deeper fill with white text rather than a lightened fill with dark text: the lighter
+     pink reads as candy next to the rust neutrals, and a near-black label on it lands
+     around 3.8:1 — below the 4.5:1 minimum for body text. */
+  --accent: #a8374d;
+  --accent-hover: #bc4159;
+  --accent-pressed: #8e2c3f;
+  --accent-text: #e2909d;
+  --accent-subtle: #33232a;
+  --on-accent: #ffffff;
+
+  --ok: #5fbf7f;
+  --ok-bg: #1e2b22;
+  --caution: #e0a458;
+  --caution-bg: #2e2519;
+  --danger: #e8877c;
+  --danger-bg: #2f201e;
+  --neutral-dot: #9a9792;
+
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --elev-flyout: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+a {
+  color: var(--accent);
+}
+
+/* Fluent's focus treatment: a dark inner line with a light outer line, so it stays
+   visible on any surface in either theme. */
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+  border-radius: var(--radius-control);
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+/* --- Windows 11 type ramp (size/line-height in epx, exactly as documented) --- */
+
+h1 {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+h2 {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  font-family: var(--font-display);
+}
+h3 {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+p {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+
+.small {
+  font-size: 12px;
+  line-height: 16px;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.section-label {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: var(--sp-2);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  z-index: 99;
+  transform: translateY(-200%);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: var(--radius-control);
+  font-weight: 600;
+}
+.skip-link:focus {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  .card,
+  .workspace-card,
+  .nav a,
+  .btn {
+    border: 1px solid CanvasText !important;
+  }
+}

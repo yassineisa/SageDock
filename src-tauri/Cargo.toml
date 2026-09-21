@@ -1,0 +1,71 @@
+[package]
+name = "sagedock"
+version = "1.4.3"
+description = "SageDock desktop shell"
+authors = ["Yassin Eisa"]
+license = "MIT"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "sagedock_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
+time = { version = "0.3", features = ["formatting"] }
+winreg = "0.55"
+sha2 = "0.10"
+ureq = { version = "2", features = ["tls"] }
+getrandom = "0.3"
+base64 = "0.22"
+# Backups are ordinary ZIP files so a student can open one in File Explorer without
+# SageDock. Default features are off deliberately: deflate alone keeps the archive
+# readable by every standard tool and avoids pulling in native bzip2/zstd builds.
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# Starts a native OS drag so a notebook can be dragged from SageDock onto the desktop.
+# The lower-level crate is used directly rather than `tauri-plugin-drag`, which exposes the
+# operation only as a webview command: that would mean handing absolute filesystem paths to
+# the frontend, which no other command here does. Called from Rust, the path is resolved
+# inside the workspace and never leaves the backend.
+drag = "2"
+# Deleting a notebook sends it to the Recycle Bin rather than unlinking it, the same margin
+# Windows' own Explorer gives a mistaken click. A small, focused crate rather than hand-rolled
+# `SHFileOperationW` FFI, matching the choice already made for `drag` above.
+trash = "5"
+# The Save As dialog shown when the built-in browser downloads a file.
+#
+# `tauri-plugin-dialog` is used everywhere else and would be used here too, but it cannot be:
+# WebView2 delivers the download event on the UI thread, where the plugin's `blocking_*`
+# pickers deadlock the event loop by its own documentation, while its callback form answers
+# after the handler has already had to return a destination. `rfd`'s synchronous dialog is
+# what the plugin itself wraps, so this adds no new transitive dependency — the version and
+# features below are copied from the plugin's own manifest so the two cannot disagree.
+rfd = { version = "0.16", default-features = false, features = ["common-controls-v6"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Storage_FileSystem", "Win32_Foundation"] }
+
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
