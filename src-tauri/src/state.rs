@@ -46,6 +46,9 @@ pub struct AppState {
     /// Files the built-in browser downloaded, so Home can list one saved outside the
     /// Windows Downloads folder. See `downloads.rs` for why this is a record and not a scan.
     downloads: Mutex<DownloadStore>,
+    /// The authoritative state of the setup operation. Public because every screen observes
+    /// it, and because setup deliberately outlives the screen that started it.
+    pub setup: crate::setup::SetupTracker,
     pub paths: AppPaths,
 }
 
@@ -97,6 +100,7 @@ impl AppState {
             runtime_owned: AtomicBool::new(false),
             workspaces: Mutex::new(workspaces),
             downloads: Mutex::new(DownloadStore::load(&paths.app_data_dir)),
+            setup: crate::setup::SetupTracker::new(paths.app_data_dir.clone()),
             paths,
         }
     }
@@ -114,6 +118,27 @@ impl AppState {
         }
         *guard = Some(label);
         Some(OperationGuard { state: self })
+    }
+
+    /// Claims the slot without a guard, for work that outlives the calling command.
+    ///
+    /// The guard above borrows `self`, which ties the claim to a command's stack frame.
+    /// Setup runs on its own thread and has to hold the slot across that boundary, so it
+    /// claims here and releases with [`Self::end_operation`] from an owned RAII type. The
+    /// pairing is the caller's responsibility, and the only caller wraps it in a `Drop`
+    /// impl so a panic still releases it.
+    pub fn claim_operation(&self, label: &'static str) -> bool {
+        let mut guard = self.operation.lock().expect("operation mutex poisoned");
+        if guard.is_some() {
+            return false;
+        }
+        *guard = Some(label);
+        true
+    }
+
+    /// Releases a slot claimed by [`Self::claim_operation`].
+    pub fn end_operation(&self) {
+        *self.operation.lock().expect("operation mutex poisoned") = None;
     }
 
     /// What SageDock is doing right now, if anything.
@@ -486,6 +511,43 @@ mod tests {
             state.begin_operation(operation::SETUP).is_some(),
             "reusable afterwards"
         );
+    }
+
+    /// Setup claims the slot in the command and releases it from its worker thread, so the
+    /// two halves are tested as the pair they are.
+    #[test]
+    fn a_claim_without_a_guard_still_blocks_and_still_releases() {
+        let state = test_state();
+        assert!(state.claim_operation(operation::SETUP));
+        assert!(state.is_busy());
+        // The whole point of claiming synchronously: a second click is refused before it
+        // can start a second installation.
+        assert!(
+            !state.claim_operation(operation::SETUP),
+            "an overlapping claim must be refused",
+        );
+        assert!(
+            state.begin_operation(operation::BACKUP).is_none(),
+            "a guarded operation must also see the slot as taken",
+        );
+
+        state.end_operation();
+        assert!(!state.is_busy());
+        assert!(
+            state.begin_operation(operation::BACKUP).is_some(),
+            "the slot must be reusable once released",
+        );
+    }
+
+    /// Releasing something that was never claimed must not panic or poison the mutex: the
+    /// worker's `Drop` runs on paths where the claim may already have been given up.
+    #[test]
+    fn releasing_an_unclaimed_slot_is_harmless() {
+        let state = test_state();
+        state.end_operation();
+        state.end_operation();
+        assert!(!state.is_busy());
+        assert!(state.claim_operation(operation::SETUP));
     }
 
     /// The bug this guards against: every operation shared one flag named after setup, so

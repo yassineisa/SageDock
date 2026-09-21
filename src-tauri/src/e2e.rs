@@ -82,7 +82,7 @@ fn installs_a_package_and_opens_a_sage_notebook() {
 
     // --- setup ---------------------------------------------------------------------
     let started = Instant::now();
-    let outcome = run_setup(&paths, Some(&image), &mut |progress| {
+    let outcome = run_setup(&paths, Some(&image), "e2e", &mut |progress| {
         println!(
             "[{:>4}s] {:<38} {}",
             started.elapsed().as_secs(),

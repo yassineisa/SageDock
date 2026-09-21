@@ -174,7 +174,7 @@ pub fn distro_running_state() -> Option<bool> {
 
 // --- elevated install --------------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ElevatedOutcome {
     /// Every step succeeded outright; WSL should be usable without restarting.
     Completed,
@@ -184,56 +184,269 @@ pub enum ElevatedOutcome {
     DeclinedByUser,
 }
 
+/// What the supervisor has to say. Delivered through one callback rather than two so the
+/// caller can forward both with a single mutable borrow of its own progress sink.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ElevationEvent {
+    /// Windows is showing its permission prompt and nothing will progress until the user
+    /// answers it. The prompt can appear behind the app window, so the UI says where to
+    /// look rather than leaving the student staring at a spinner.
+    AwaitingConsent,
+    /// Permission was granted and the elevated helper is doing the work.
+    HelperRunning,
+    /// The helper is still alive. Liveness only — never progress.
+    Heartbeat,
+}
+
+/// What the elevated helper reported. Parsed from the result file it writes.
+#[derive(Debug, Clone, serde::Deserialize)]
+struct ElevatedReport {
+    /// Echoes the operation id, so a result left behind by an earlier run can never be
+    /// mistaken for this one's.
+    operation_id: String,
+    /// "completed", "restart_required", or "failed".
+    status: String,
+    #[serde(default)]
+    exit_code: i32,
+    #[serde(default)]
+    detail: String,
+}
+
+/// How long to keep waiting once the helper process is **gone** and no result appeared.
+/// Short, because a vanished process is a settled fact — this only covers the moment
+/// between the process exiting and its file becoming readable.
+const RESULT_GRACE: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How long to wait for the user to answer the permission prompt before giving up on it.
+/// Generous: a student may not have noticed the prompt, and the honest failure here is
+/// "nobody answered", not "installation failed".
+const CONSENT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
+
 /// Enables the Windows features WSL needs and installs WSL, behind one UAC prompt.
 ///
 /// This is the only operation SageDock performs with administrator rights, and it runs as a
 /// separate short-lived elevated process — the app itself stays unelevated.
 ///
-/// The elevated script checks each step and returns one Windows exit code. It is passed
-/// as UTF-16 EncodedCommand, avoiding executable scripts in writable temporary folders.
-pub fn install_wsl_elevated() -> AppResult<ElevatedOutcome> {
+/// ## Why this supervises rather than blocks
+///
+/// The previous implementation ran `Start-Process -Verb RunAs -Wait` inside a hidden shell
+/// and simply waited up to thirty minutes for an exit code. That produced the reported
+/// stall: from the moment the UAC prompt appeared, the app emitted nothing at all, so an
+/// unanswered prompt and a running installation looked identical — a frozen window. Worse,
+/// the timeout killed the *outer* shell, which an unelevated process cannot use to stop the
+/// elevated `dism` it started; the installation carried on invisibly while the app reported
+/// that it had stopped.
+///
+/// So the launcher no longer waits. It returns as soon as consent is settled, handing back
+/// the helper's process id, and this function supervises from there:
+///
+/// - Before the id arrives, the user is answering the prompt — `AwaitingConsent`.
+/// - After it arrives, Windows is working — `HelperRunning`, with liveness checked against
+///   the real process rather than inferred from silence. `dism` is routinely quiet for
+///   minutes at a time, so quiet output is never treated as a hang.
+/// - Nothing is ever killed. A helper that outlives our patience is reported as still
+///   running, because that is what is true.
+///
+/// ## The result channel
+///
+/// An exit code alone cannot distinguish "the helper never started" from "dism failed with
+/// code 1", and `Start-Process -PassThru`'s `ExitCode` is null often enough that `exit
+/// $p.ExitCode` could report success for a run that never happened. The helper therefore
+/// writes a small JSON report to a file named for this operation, and this function
+/// accepts it only if the embedded operation id matches.
+///
+/// That file lives in SageDock's own application data directory, not a world-writable
+/// temporary folder, and the code the helper runs is still passed immutably on its command
+/// line rather than read from a script on disk. To be clear about what this does and does
+/// not defend against: it prevents a stale or concurrent run's result being mistaken for
+/// this one's. It is not a defence against an attacker who can already write to the user's
+/// own application data, who would have easier targets there anyway.
+pub fn install_wsl_elevated(
+    app_data_dir: &Path,
+    operation_id: &str,
+    on_event: &mut dyn FnMut(ElevationEvent),
+) -> AppResult<ElevatedOutcome> {
     use base64::Engine;
-    // The elevated process receives immutable code in its command line. No executable
-    // script or result file is placed in a user-writable temporary directory.
-    const SCRIPT: &str = r#"
-$ErrorActionPreference = 'Stop'
-$restart = $false
-foreach ($feature in @('Microsoft-Windows-Subsystem-Linux', 'VirtualMachinePlatform')) {
-    & "$env:SystemRoot\System32\dism.exe" /online /enable-feature /featurename:$feature /all /norestart *> $null
-    $code = $LASTEXITCODE
-    if ($code -eq 3010) { $restart = $true }
-    elseif ($code -ne 0) { exit $code }
-}
-if ($restart) { exit 3010 }
-& "$env:SystemRoot\System32\wsl.exe" --install --no-distribution *> $null
-exit $LASTEXITCODE
-"#;
-    let bytes: Vec<u8> = SCRIPT.encode_utf16().flat_map(u16::to_le_bytes).collect();
+
+    let result_path = app_data_dir.join(format!("elevated-{operation_id}.json"));
+    // A leftover file from a previous attempt would be read as this attempt's answer.
+    let _ = std::fs::remove_file(&result_path);
+    std::fs::create_dir_all(app_data_dir).map_err(|e| install_error(e.to_string()))?;
+
+    let script = elevated_script(operation_id, &result_path);
+    let bytes: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
     let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
+
+    // No `-Wait`: consent is the only thing this launcher waits for. It prints the helper's
+    // process id so the supervisor below can watch the real process.
     let launcher = format!(
         r#"try {{
-        $p = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','{encoded}' -Verb RunAs -WindowStyle Hidden -Wait -PassThru -ErrorAction Stop
-        exit $p.ExitCode
-    }} catch {{ if ($_.Exception.NativeErrorCode -eq 1223) {{ exit 1223 }}; exit 1 }}"#
+        $p = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','{encoded}' -Verb RunAs -WindowStyle Hidden -PassThru -ErrorAction Stop
+        Write-Output "SAGEDOCK_PID=$($p.Id)"
+        exit 0
+    }} catch {{ if ($_.Exception.NativeErrorCode -eq 1223) {{ exit 1223 }}; Write-Output "SAGEDOCK_LAUNCH_ERROR=$($_.Exception.Message)"; exit 1 }}"#
     );
-    let result = crate::system::process::run_hidden_timeout(
+
+    on_event(ElevationEvent::AwaitingConsent);
+    let launch = crate::system::process::run_hidden_timeout(
         "powershell.exe",
         &["-NoProfile", "-NonInteractive", "-Command", &launcher],
-        std::time::Duration::from_secs(1800),
+        CONSENT_TIMEOUT,
     )
-    .map_err(|e| install_error(e.to_string()))?
+    .map_err(|e| {
+        // A timeout here means the prompt went unanswered. Nothing was installed and
+        // nothing was left running, so this is a plain "try again", not a failure state.
+        install_error(format!("waiting for permission: {e}")).with_severity(ErrorSeverity::Warning)
+    })?
     .ok_or_else(|| install_error("Windows PowerShell is unavailable".into()))?;
-    classify_install_exit(result.exit_code)
+
+    if launch.exit_code == Some(1223) {
+        let _ = std::fs::remove_file(&result_path);
+        return Ok(ElevatedOutcome::DeclinedByUser);
+    }
+    let Some(pid) = parse_helper_pid(&launch.combined_output) else {
+        let _ = std::fs::remove_file(&result_path);
+        // The helper never started. Distinguished from a helper that started and failed,
+        // because the two need different advice.
+        return Err(install_error(format!(
+            "the elevated helper did not start (exit {:?}): {}",
+            launch.exit_code,
+            launch.combined_output.trim(),
+        )));
+    };
+
+    on_event(ElevationEvent::HelperRunning);
+    let outcome = supervise_helper(pid, &result_path, operation_id, on_event);
+    let _ = std::fs::remove_file(&result_path);
+    outcome
 }
 
-/// Distinguishes completion, required reboot, denied elevation, and actual failure.
-fn classify_install_exit(exit_code: Option<i32>) -> AppResult<ElevatedOutcome> {
-    match exit_code {
-        Some(0) => Ok(ElevatedOutcome::Completed),
-        Some(3010) => Ok(ElevatedOutcome::RestartRequired),
-        Some(1223) => Ok(ElevatedOutcome::DeclinedByUser),
-        code => Err(install_error(format!("Windows setup exit: {code:?}"))),
+/// Watches the elevated helper until it reports, disappears, or is still going when asked
+/// about. Never kills it: this process is unelevated and could not stop it anyway, and
+/// pretending otherwise is how the old code came to report a stopped installation that was
+/// in fact still running.
+fn supervise_helper(
+    pid: u32,
+    result_path: &Path,
+    operation_id: &str,
+    on_event: &mut dyn FnMut(ElevationEvent),
+) -> AppResult<ElevatedOutcome> {
+    let mut gone_since: Option<std::time::Instant> = None;
+    loop {
+        if let Some(report) = read_report(result_path, operation_id) {
+            return classify_report(&report);
+        }
+        if crate::setup::process_is_running(pid) {
+            gone_since = None;
+        } else {
+            // The process ended. Give the filesystem a moment for its result to land
+            // before concluding it wrote nothing.
+            let since = gone_since.get_or_insert_with(std::time::Instant::now);
+            if since.elapsed() >= RESULT_GRACE {
+                return Err(install_error(format!(
+                    "the elevated helper (pid {pid}) ended without reporting a result",
+                )));
+            }
+        }
+        on_event(ElevationEvent::Heartbeat);
+        std::thread::sleep(std::time::Duration::from_millis(500));
     }
+}
+
+/// Reads the helper's report, ignoring one written for a different operation.
+fn read_report(path: &Path, operation_id: &str) -> Option<ElevatedReport> {
+    let raw = std::fs::read_to_string(path).ok()?;
+    let report: ElevatedReport = serde_json::from_str(&raw).ok()?;
+    (report.operation_id == operation_id).then_some(report)
+}
+
+/// Distinguishes completion, required reboot, and actual failure.
+fn classify_report(report: &ElevatedReport) -> AppResult<ElevatedOutcome> {
+    match report.status.as_str() {
+        "completed" => Ok(ElevatedOutcome::Completed),
+        "restart_required" => Ok(ElevatedOutcome::RestartRequired),
+        _ => Err(install_error(format!(
+            "Windows setup reported {} (exit {}): {}",
+            report.status, report.exit_code, report.detail,
+        ))),
+    }
+}
+
+/// Pulls the helper's process id out of the launcher's output.
+fn parse_helper_pid(output: &str) -> Option<u32> {
+    output
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("SAGEDOCK_PID="))
+        .and_then(|value| value.trim().parse().ok())
+        .filter(|&pid| pid != 0)
+}
+
+/// The code the elevated helper runs.
+///
+/// `dism` is invoked per feature so a failure names the feature that failed, and the whole
+/// thing is wrapped so the result file is written on every path — including an unexpected
+/// exception. A helper that dies without writing is detectable (the supervisor sees the
+/// process disappear with no report) but not diagnosable, so it is worth the `finally`.
+fn elevated_script(operation_id: &str, result_path: &Path) -> String {
+    // Both values are produced by SageDock, not by the user: the id is hex from
+    // `new_operation_id` and the path is built from the app's own data directory. They are
+    // still single-quoted with embedded quotes doubled, so neither can close its literal
+    // and run as code.
+    let id = ps_single_quoted(operation_id);
+    let path = ps_single_quoted(&result_path.to_string_lossy());
+    format!(
+        r#"
+$ErrorActionPreference = 'Stop'
+$resultPath = {path}
+$report = @{{ operation_id = {id}; status = 'failed'; exit_code = 0; detail = 'the helper ended unexpectedly' }}
+try {{
+    $restart = $false
+    foreach ($feature in @('Microsoft-Windows-Subsystem-Linux', 'VirtualMachinePlatform')) {{
+        & "$env:SystemRoot\System32\dism.exe" /online /enable-feature /featurename:$feature /all /norestart *> $null
+        $code = $LASTEXITCODE
+        if ($code -eq 3010) {{ $restart = $true }}
+        elseif ($code -ne 0) {{
+            $report.status = 'failed'
+            $report.exit_code = $code
+            $report.detail = "enabling $feature failed"
+            throw "dism $feature exit $code"
+        }}
+    }}
+    if ($restart) {{
+        $report.status = 'restart_required'
+        $report.exit_code = 3010
+        $report.detail = 'a Windows feature needs a restart to finish'
+    }} else {{
+        & "$env:SystemRoot\System32\wsl.exe" --install --no-distribution *> $null
+        $code = $LASTEXITCODE
+        if ($code -eq 0) {{
+            $report.status = 'completed'
+            $report.detail = 'components enabled'
+        }} elseif ($code -eq 3010) {{
+            $report.status = 'restart_required'
+            $report.exit_code = 3010
+            $report.detail = 'the computing component needs a restart to finish'
+        }} else {{
+            $report.status = 'failed'
+            $report.exit_code = $code
+            $report.detail = 'installing the computing component failed'
+        }}
+    }}
+}} catch {{
+    if ($report.detail -eq 'the helper ended unexpectedly') {{ $report.detail = $_.Exception.Message }}
+}} finally {{
+    try {{ ConvertTo-Json $report -Compress | Set-Content -LiteralPath $resultPath -Encoding UTF8 }} catch {{ }}
+}}
+exit 0
+"#
+    )
+}
+
+/// Wraps a value as a PowerShell single-quoted literal, doubling any embedded quote.
+/// Inside single quotes PowerShell performs no expansion at all, so a doubled quote is the
+/// only escape that matters.
+fn ps_single_quoted(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "''"))
 }
 
 fn install_error(details: String) -> AppError {
@@ -465,36 +678,108 @@ fn run_checked(args: &[&str], code: &str, title: &str, message: &str) -> AppResu
 mod tests {
     use super::*;
 
-    #[test]
-    fn installation_exit_codes_preserve_reboot_and_cancellation() {
-        assert!(matches!(
-            classify_install_exit(Some(0)).unwrap(),
-            ElevatedOutcome::Completed
-        ));
-        assert!(matches!(
-            classify_install_exit(Some(3010)).unwrap(),
-            ElevatedOutcome::RestartRequired
-        ));
-        assert!(matches!(
-            classify_install_exit(Some(1223)).unwrap(),
-            ElevatedOutcome::DeclinedByUser
-        ));
+    fn report(status: &str, exit_code: i32) -> ElevatedReport {
+        ElevatedReport {
+            operation_id: "op1".into(),
+            status: status.into(),
+            exit_code,
+            detail: "detail".into(),
+        }
     }
 
     #[test]
-    fn failed_or_missing_installation_exit_is_not_success() {
-        for code in [
-            None,
-            Some(1),
-            Some(87),
-            Some(-1),
-            Some(0x800f0954u32 as i32),
-        ] {
+    fn the_helpers_report_preserves_reboot_and_completion() {
+        assert_eq!(
+            classify_report(&report("completed", 0)).unwrap(),
+            ElevatedOutcome::Completed
+        );
+        assert_eq!(
+            classify_report(&report("restart_required", 3010)).unwrap(),
+            ElevatedOutcome::RestartRequired
+        );
+    }
+
+    #[test]
+    fn any_status_other_than_success_is_a_failure_rather_than_a_default_to_completed() {
+        // The old code mapped a missing exit code to failure but a null `ExitCode` from
+        // `Start-Process -PassThru` to `exit 0` — reporting success for a run that never
+        // happened. An unrecognised status must never fall through to success.
+        for status in ["failed", "", "unknown", "Completed"] {
             assert_eq!(
-                classify_install_exit(code).unwrap_err().code,
-                "WSL_INSTALL_FAILED"
+                classify_report(&report(status, 1)).unwrap_err().code,
+                "WSL_INSTALL_FAILED",
+                "status {status:?} must not be read as success",
             );
         }
+    }
+
+    #[test]
+    fn a_report_from_a_different_operation_is_refused() {
+        let dir = std::env::temp_dir().join(format!("sagedock-wsl-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("report.json");
+        std::fs::write(
+            &path,
+            br#"{"operation_id":"other","status":"completed","exit_code":0,"detail":""}"#,
+        )
+        .unwrap();
+        // A result left behind by an earlier run must not be read as this run's answer,
+        // or a retry would instantly "succeed" without Windows having done anything.
+        assert!(read_report(&path, "op1").is_none());
+        assert!(read_report(&path, "other").is_some());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn an_unreadable_or_absent_report_is_simply_not_an_answer_yet() {
+        let missing = std::env::temp_dir().join("sagedock-no-such-report.json");
+        let _ = std::fs::remove_file(&missing);
+        assert!(read_report(&missing, "op1").is_none());
+    }
+
+    #[test]
+    fn the_helper_process_id_is_read_back_from_the_launcher_output() {
+        assert_eq!(parse_helper_pid("SAGEDOCK_PID=4321\n"), Some(4321));
+        // Real output carries other lines around it.
+        assert_eq!(
+            parse_helper_pid("noise\r\nSAGEDOCK_PID=99\r\nmore noise"),
+            Some(99),
+        );
+    }
+
+    #[test]
+    fn a_launcher_that_reported_no_process_id_is_not_treated_as_a_started_helper() {
+        assert_eq!(parse_helper_pid(""), None);
+        assert_eq!(
+            parse_helper_pid("SAGEDOCK_LAUNCH_ERROR=Access denied"),
+            None
+        );
+        // Zero is not a usable process id, and treating it as one would make the
+        // supervisor watch nothing and wait forever.
+        assert_eq!(parse_helper_pid("SAGEDOCK_PID=0"), None);
+        assert_eq!(parse_helper_pid("SAGEDOCK_PID=notanumber"), None);
+    }
+
+    #[test]
+    fn a_single_quote_in_an_embedded_value_cannot_close_its_literal() {
+        assert_eq!(ps_single_quoted("plain"), "'plain'");
+        assert_eq!(ps_single_quoted("it's"), "'it''s'");
+        // The shape that would otherwise end the string and start a new statement.
+        assert_eq!(
+            ps_single_quoted("'; Remove-Item C:\\ -Recurse; '"),
+            "'''; Remove-Item C:\\ -Recurse; '''",
+        );
+    }
+
+    #[test]
+    fn the_elevated_script_embeds_the_operation_id_so_its_report_can_be_matched() {
+        let script = elevated_script("abc123", Path::new(r"C:\data\elevated-abc123.json"));
+        assert!(script.contains("'abc123'"));
+        assert!(script.contains(r"C:\data\elevated-abc123.json"));
+        // Every path through the script must leave a report behind, or a failure becomes
+        // indistinguishable from a helper that never ran.
+        assert!(script.contains("finally"));
+        assert!(script.contains("restart_required"));
     }
 
     /// The exact failure seen on a test PC: Windows reported WSL as available, the import

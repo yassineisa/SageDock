@@ -75,6 +75,22 @@ credentials.json
 TAURI_SIGNING_PRIVATE_KEY*
 *.tauri-signing-key
 
+# Azure Artifact Signing keeps the private key in Microsoft's service, so no key
+# material is ever produced locally. These rules cover the things that *are* produced
+# locally and must not be shared: the Azure CLI's token cache, and the downloaded
+# signing client (~15 MB of Microsoft tooling, re-fetched by scripts/release.ps1).
+#
+# The signing metadata under build/signing/ is deliberately NOT ignored: it holds only
+# the endpoint, account name and certificate profile, all of which are non-secret and
+# worth reviewing. See the comment in that file.
+.signing/
+.azure/
+*.nupkg
+msal_token_cache*
+service_principal_entries*
+azureProfile.json
+accessTokens.json
+
 # ─── Jupyter / Python ──────────────────────────────────────────────
 # Jupyter runtime JSON carries live server tokens; backup.rs already
 # excludes .jupyter for exactly this reason.

@@ -9,12 +9,12 @@
 use std::path::PathBuf;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::config::{AppConfig, ThemePreference};
-use crate::error::{AppError, AppResult};
+use crate::error::{AppError, AppResult, ErrorSeverity};
 use crate::jupyter::{self, notebook::NotebookKind};
 use crate::runtime::{self, image, provision::SetupPaths, wsl, PersistedSetupState, SetupOutcome};
 use crate::state::{busy_error, operation, AppState};
@@ -237,34 +237,255 @@ pub(crate) fn setup_status(state: &AppState) -> AppResult<SetupStatus> {
     })
 }
 
-/// Runs environment setup, streaming progress to the UI as `setup-progress` events.
+/// Publishes setup snapshots to the frontend as `setup-progress` events.
+struct EventSink(AppHandle);
+
+impl crate::setup::ProgressSink for EventSink {
+    fn publish(&self, snapshot: &crate::setup::SetupSnapshot) {
+        let _ = self.0.emit("setup-progress", snapshot);
+    }
+}
+
+/// Releases the operation slot however the setup thread ends, including a panic.
+///
+/// The guard used elsewhere borrows `AppState`, which cannot outlive a command; this one
+/// carries an `AppHandle` instead so ownership can live on the background thread, and
+/// releases the slot on every return path out of the worker — including the early ones.
+///
+/// One honest limitation: release builds set `panic = "abort"`, so a panic inside the
+/// worker takes the process down rather than unwinding, and this `Drop` never runs. That
+/// is not a leak — the whole app is gone — but it does mean the guard's panic-safety only
+/// applies to debug and test builds. What it always covers is the ordinary case: every
+/// `return` and `?` on the way out.
+struct ThreadOperation(AppHandle);
+
+impl Drop for ThreadOperation {
+    fn drop(&mut self) {
+        self.0.state::<AppState>().end_operation();
+    }
+}
+
+/// Starts environment setup on a background thread and returns immediately.
+///
+/// Returning the snapshot rather than the outcome is the point. Setup is a backend
+/// operation that outlives whichever screen asked for it: the caller gets the operation id
+/// and then observes progress like any other screen, by listening for `setup-progress` or
+/// by calling [`setup_snapshot`]. Navigating away cannot orphan it, and a screen that
+/// mounts halfway through recovers the full picture by asking.
 #[tauri::command(async)]
-pub fn run_setup(app: AppHandle, state: State<'_, AppState>) -> AppResult<SetupOutcome> {
+pub fn run_setup(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> AppResult<crate::setup::SetupSnapshot> {
     let paths = SetupPaths {
         app_data_dir: state.paths.app_data_dir.clone(),
         workspace_dir: state.paths.workspace_dir.clone(),
     };
     let package = current_package(&state);
 
-    // Held for the whole run: two overlapping setups would import into the same environment
-    // at once, and shutdown must not tear it down while this is in flight.
-    let _guard = state
-        .begin_operation(operation::SETUP)
-        .ok_or_else(|| busy_error(&state))?;
-
-    let mut emit = |progress: runtime::SetupProgress| {
-        let _ = app.emit("setup-progress", &progress);
-    };
-
-    let outcome = runtime::provision::run_setup(&paths, package.as_deref(), &mut emit)?;
-
-    // Having installed the environment, this instance is the one entitled to stop it.
-    if outcome == SetupOutcome::Ready {
-        state.mark_runtime_owned();
+    // Claimed synchronously, before returning, so a second click is refused rather than
+    // racing: two overlapping setups would import into the same environment at once.
+    let claimed = state.claim_operation(operation::SETUP);
+    if !claimed {
+        return Err(busy_error(&state));
     }
 
-    tracing::info!(target: "setup", ?outcome, "setup finished");
-    Ok(outcome)
+    let sink = EventSink(app.clone());
+    let operation_id = state.setup.begin(Some(&sink));
+    let snapshot = state.setup.snapshot();
+
+    let worker = app.clone();
+    let id = operation_id.clone();
+    // `Builder::spawn` rather than `thread::spawn`, which panics when the OS refuses a
+    // thread. The slot is already claimed at this point, so a panic here would strand the
+    // app as permanently busy — precisely the state this change exists to make impossible.
+    let spawned = std::thread::Builder::new()
+        .name("sagedock-setup".into())
+        .spawn(move || {
+            // Dropped on every exit path out of the worker.
+            let _release = ThreadOperation(worker.clone());
+            let state = worker.state::<AppState>();
+            let sink = EventSink(worker.clone());
+
+            let mut emit = |progress: runtime::SetupProgress| {
+                use runtime::provision::ProgressKind;
+                match progress.kind {
+                    // Liveness only — deliberately does not touch the progress timestamp.
+                    ProgressKind::Heartbeat => state.setup.heartbeat(Some(&sink)),
+                    ProgressKind::AwaitingPermission => state.setup.set_phase(
+                        Some(&sink),
+                        crate::setup::SetupPhase::WaitingForPermission,
+                        progress
+                            .detail
+                            .as_deref()
+                            .unwrap_or("Waiting for permission"),
+                    ),
+                    ProgressKind::WaitingForWindows => state.setup.set_phase(
+                        Some(&sink),
+                        crate::setup::SetupPhase::WaitingForWindows,
+                        progress.detail.as_deref().unwrap_or("Waiting for Windows"),
+                    ),
+                    ProgressKind::Working => {
+                        // Returning to working after a wait has to restore the phase too, or
+                        // the UI would keep asking for a permission that has been granted.
+                        if state.setup.snapshot().phase != crate::setup::SetupPhase::Running {
+                            state.setup.set_phase(
+                                Some(&sink),
+                                crate::setup::SetupPhase::Running,
+                                progress.detail.as_deref().unwrap_or("Working"),
+                            );
+                        }
+                        state.setup.enter_stage(
+                            Some(&sink),
+                            progress.stage,
+                            progress.detail.as_deref(),
+                            progress.percent,
+                        );
+                    }
+                }
+            };
+
+            let result = runtime::provision::run_setup(&paths, package.as_deref(), &id, &mut emit);
+
+            match result {
+                Ok(outcome) => {
+                    if outcome == SetupOutcome::Ready {
+                        // Having installed the environment, this instance may stop it.
+                        state.mark_runtime_owned();
+                    }
+                    let phase = match outcome {
+                        SetupOutcome::Ready => crate::setup::SetupPhase::Completed,
+                        SetupOutcome::AwaitingRestart => crate::setup::SetupPhase::RestartRequired,
+                        // Setup ran to the point of needing a file it doesn't have. That is a
+                        // stop with a specific next action, not a crash, and it is reported as
+                        // a failure phase so the UI offers that action rather than claiming
+                        // success.
+                        SetupOutcome::NeedsSagePackage => crate::setup::SetupPhase::Failed,
+                    };
+                    let problem = (outcome == SetupOutcome::NeedsSagePackage).then(|| {
+                        AppError::new(
+                            "setup",
+                            "SAGE_PACKAGE_MISSING",
+                            "SageDock needs the SageMath package",
+                            "The SageMath package wasn't found on this PC. If you received it \
+                         separately, choose it below and run setup again. A complete SageDock \
+                         installer includes this file.",
+                        )
+                        .with_severity(ErrorSeverity::Warning)
+                    });
+                    state
+                        .setup
+                        .finish(Some(&sink), phase, Some(outcome), problem);
+                    tracing::info!(target: "setup", ?outcome, "setup finished");
+                }
+                Err(err) => {
+                    tracing::warn!(target: "setup", code = %err.code, "setup failed");
+                    state.setup.finish(
+                        Some(&sink),
+                        crate::setup::SetupPhase::Failed,
+                        None,
+                        Some(err),
+                    );
+                }
+            }
+        });
+
+    if let Err(err) = spawned {
+        // Nothing is running, so the slot must go back and the operation must still reach
+        // a recorded ending — an operation that simply vanished is the one outcome this
+        // design does not allow.
+        let problem = AppError::new(
+            "setup",
+            "SETUP_THREAD_FAILED",
+            "SageDock couldn't start setting up",
+            "Your files are safe and nothing was changed. Close some other applications to \
+             free up memory, then try setup again.",
+        )
+        .with_technical_details(err.to_string());
+        let sink = EventSink(app.clone());
+        state.setup.finish(
+            Some(&sink),
+            crate::setup::SetupPhase::Failed,
+            None,
+            Some(problem.clone()),
+        );
+        state.end_operation();
+        return Err(problem);
+    }
+
+    Ok(snapshot)
+}
+
+/// The authoritative state of setup, answerable at any moment.
+///
+/// This is what makes navigation safe. A screen mounting mid-operation calls this and gets
+/// the whole picture — phase, stage, step list, elapsed time, log — rather than waiting for
+/// the next event and showing nothing until one arrives.
+#[tauri::command(async)]
+pub fn setup_snapshot(state: State<'_, AppState>) -> crate::setup::SetupSnapshot {
+    state.setup.snapshot()
+}
+
+/// Marks an interrupted operation as seen, so it is reported once rather than every launch.
+#[tauri::command(async)]
+pub fn acknowledge_setup_interruption(state: State<'_, AppState>) -> AppResult<()> {
+    state.setup.clear_record()
+}
+
+/// Builds a shareable report of the setup run.
+///
+/// Returned as text rather than written to a file so the frontend can offer it for copying
+/// without SageDock choosing a location on the user's behalf. Every line goes through the
+/// same redaction as the live log: no tokens, and the Windows account name is replaced.
+#[tauri::command(async)]
+pub fn setup_diagnostics(state: State<'_, AppState>) -> String {
+    let snapshot = state.setup.snapshot();
+    let now = crate::setup::now_ms();
+    let mut out = String::new();
+    out.push_str("SageDock setup diagnostics\n");
+    out.push_str(&format!("App version: {}\n", env!("CARGO_PKG_VERSION")));
+    out.push_str(&format!("Operation: {}\n", snapshot.operation_id));
+    out.push_str(&format!("Phase: {:?}\n", snapshot.phase));
+    out.push_str(&format!("Stage: {:?}\n", snapshot.stage));
+    match snapshot.elapsed_ms(now) {
+        Some(ms) => out.push_str(&format!("Running for: {}s\n", ms / 1000)),
+        None if snapshot.phase.is_terminal() => {
+            out.push_str(&format!(
+                "Finished after: {}s\n",
+                snapshot.updated_at.saturating_sub(snapshot.started_at) / 1000,
+            ));
+        }
+        None => out.push_str("Not started\n"),
+    }
+    out.push_str(&format!(
+        "Last progress: {}ms before this report\n",
+        now.saturating_sub(snapshot.updated_at),
+    ));
+    out.push_str("\nSteps\n");
+    for step in &snapshot.steps {
+        out.push_str(&format!("  {:?} — {}\n", step.state, step.title));
+    }
+    if let Some(problem) = &snapshot.problem {
+        out.push_str(&format!(
+            "\nProblem: {} ({})\n",
+            problem.title, problem.code
+        ));
+        out.push_str(&format!("  {}\n", problem.message));
+        if let Some(details) = &problem.technical_details {
+            out.push_str(&format!("  {}\n", crate::setup::redact(details)));
+        }
+    }
+    out.push_str("\nLog\n");
+    for line in &snapshot.log {
+        out.push_str(&format!(
+            "  +{}s {}\n",
+            line.at.saturating_sub(snapshot.started_at) / 1000,
+            line.text,
+        ));
+    }
+    // Belt and braces: the log is redacted on the way in, but the assembled report also
+    // carries paths and error text from elsewhere, so the whole thing is filtered again.
+    crate::setup::redact(&out)
 }
 
 // --- notebooks -------------------------------------------------------------------------------

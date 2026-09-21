@@ -1,18 +1,42 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { Link } from "react-router-dom";
 import { NavRail } from "./NavRail";
 import { ErrorBanner } from "./ErrorBanner";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Icon } from "./Icon";
 import { useTask } from "../state/TaskContext";
 import { useConfig } from "../state/ConfigContext";
-import { commands } from "../lib/commands";
+import { useSetup } from "../state/SetupContext";
+import { commands, isActivePhase } from "../lib/commands";
+
+/** What the app-wide strip says about each phase, and how urgent it looks. */
+const SETUP_BANNER = {
+  waiting_for_permission: {
+    tone: "is-attention",
+    text: "Setup needs your permission — look for the Windows permission window.",
+  },
+  waiting_for_windows: {
+    tone: "is-waiting",
+    text: "Setup is waiting for Windows to finish applying changes.",
+  },
+  running: { tone: "is-working", text: "Setting up SageMath." },
+} as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const task = useTask();
   const { loadError } = useConfig();
+  const { snapshot } = useSetup();
   const [close, setClose] = useState(false);
   const [blocked, setBlocked] = useState(false);
+
+  // Setup is visible from every page, with a way back to it. Previously the only sign of
+  // a running setup was the generic busy bar, which was driven by a frontend promise and
+  // so could outlive the work, or vanish while the work continued.
+  const setupBanner =
+    snapshot && isActivePhase(snapshot.phase)
+      ? SETUP_BANNER[snapshot.phase as keyof typeof SETUP_BANNER]
+      : null;
 
   // The backend prevents the window closing while work is in flight, and tells us whether
   // it was busy so the dialog can say which situation the user is in.
@@ -37,6 +61,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main id="main-content" className="app-content" tabIndex={-1}>
           <div className="app-content__inner">
             {loadError && <ErrorBanner title="Settings are using defaults" message={loadError} />}
+
+            {setupBanner && (
+              <div className={`task-bar setup-banner ${setupBanner.tone}`} role="status">
+                <span className="spinner" />
+                {setupBanner.text}
+                <span className="trailing">
+                  <Link to="/" className="btn btn-subtle btn-inline">
+                    Show setup
+                  </Link>
+                </span>
+              </div>
+            )}
+
             {task.busy && (
               <div className="task-bar" role="status">
                 <span className="spinner" />

@@ -73,7 +73,10 @@ pub fn replace(paths: &SetupPaths, package: Option<&Path>, restore: bool) -> App
         package.unwrap()
     };
     let result = wsl::import_distro(&wsl::default_install_dir(&paths.app_data_dir), archive)
-        .and_then(|_| provision::run_setup(paths, None, &mut |_| {}).map(|_| ()));
+        // Repair runs setup to re-verify the freshly imported environment. It is its own
+        // operation rather than part of a tracked setup run, so it reports no progress and
+        // carries an id only for the elevated result channel's benefit.
+        .and_then(|_| provision::run_setup(paths, None, "repair", &mut |_| {}).map(|_| ()));
     if let Err(original) = result {
         if !restore {
             // Restore the complete prior environment, including Linux-side customisations.

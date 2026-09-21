@@ -17,6 +17,7 @@ mod library;
 mod logging;
 mod runtime;
 mod scientific;
+mod setup;
 mod state;
 mod storage;
 mod system;
@@ -105,6 +106,17 @@ pub fn run() {
                 },
             ));
 
+            // Decide what a previous run's record means before any screen can ask.
+            //
+            // A record saying "running" was written by a process that is no longer here, so
+            // it describes a crash, a forced close, or a Windows restart — never work still
+            // in flight. It is reconciled against what is actually installed rather than
+            // restored as a busy flag, which is what used to strand the app mid-setup, and
+            // nothing is relaunched on its behalf: the user is told and offered the choice.
+            let state = app.state::<AppState>();
+            let installed = runtime::wsl::distro_exists(runtime::wsl::distro_name());
+            state.setup.reconcile(None, installed);
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -152,6 +164,9 @@ pub fn run() {
             commands::get_setup_status,
             commands::choose_sage_package,
             commands::run_setup,
+            commands::setup_snapshot,
+            commands::acknowledge_setup_interruption,
+            commands::setup_diagnostics,
             commands::new_notebook,
             commands::shutdown_and_quit,
             commands::open_workspaces_folder,

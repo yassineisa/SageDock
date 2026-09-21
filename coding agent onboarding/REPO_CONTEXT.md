@@ -4,7 +4,7 @@ Written for a coding agent or contributor who has never seen this repository and
 make a correct change without breaking something expensive. Read it start to finish; it is
 long because the traps are specific.
 
-**Source version when written: 1.4.3.**
+**Source version when written: 1.4.4.**
 
 ---
 
@@ -59,8 +59,8 @@ sagedock.exe  (Rust: src-tauri/src/main.rs -> lib.rs::run)
 └── child process: wsl.exe --exec ... sagedock-jupyter   (one per open workspace)
 ```
 
-Rough size: **13,030 lines of Rust** across 35 files, **4,135 lines of frontend** across
-22 files, plus **1,894 lines** of UI tests in a single spec. (Measured at 1.4.3.)
+Rough size: **14,702 lines of Rust** across 36 files, **6,648 lines of frontend** across
+27 files, plus **2,571 lines** of UI tests in a single spec. (Measured at 1.4.4.)
 
 `main.rs` is 6 lines and calls `run()`. **[`src-tauri/src/lib.rs`](../src-tauri/src/lib.rs)
 is the best first file to read**: it registers plugins, resolves every path once into
@@ -123,6 +123,15 @@ list.
 ### Events (Rust → UI, streamed rather than polled)
 
 `setup-progress`, `backup-progress`, `tool-progress`, `close-requested`, `files-dropped`.
+
+**`setup-progress` is not like the others.** It carries a whole `SetupSnapshot`, not a
+delta, and the same snapshot is separately queryable via `setup_snapshot`. That is
+deliberate: setup is owned by the backend and outlives any screen, so a screen must be able
+to recover the full picture by asking rather than by having been listening. Every snapshot
+carries `operation_id` and a monotonic `seq`, and **an observer must ignore any snapshot
+that is not newer** — same operation and `seq` not greater. Without that rule a slow query
+answering after a fast event rolls the display backwards. See
+[`../docs/SETUP-RELIABILITY-HANDOFF.md`](../docs/SETUP-RELIABILITY-HANDOFF.md) §3.
 
 ### Argument casing
 
@@ -196,7 +205,8 @@ rebuild URLs by string surgery elsewhere — that is exactly what caused the bug
 | `workspaces.rs` | The workspace registry. A workspace is nothing more than an ordinary Windows directory.                                            |
 | `scientific.rs` | Compilers and build tools: an allowlisted catalogue, verified by compiling **and running** test programs.                          |
 | `library.rs`    | Notebook discovery, import, Downloads scanning, relative-path resolution, Recycle Bin deletion.                                    |
-| `state.rs`      | `AppState`, the operation lock, running servers, the config mutex.                                                                 |
+| `state.rs`      | `AppState`, the operation lock, running servers, the config mutex, the setup tracker.                                              |
+| `setup.rs`      | The backend-owned setup operation: phases, the step plan, sequence numbering, crash reconciliation, log redaction.                 |
 | `browsers.rs`   | Installed-browser detection from the registry, for the first-run choice.                                                           |
 | `downloads.rs`  | A record of what the built-in browser downloaded, so Home lists a file saved outside the Downloads folder. A record, never a scan. |
 | `config.rs`     | Settings persistence.                                                                                                              |
@@ -255,6 +265,7 @@ src/pages/            Home (largest), Onboarding, Tools, Settings, Recovery,
 src/state/
   ConfigContext.tsx   theme, browser and onboarding settings; tolerates a failed load
   TaskContext.tsx     the busy/error/message surface used by every page
+  SetupContext.tsx    the ONE observer of setup, mounted above the router on purpose
 src/styles/
   theme.css           tokens, type ramp, base elements
   layout.css          structure and components
@@ -379,6 +390,20 @@ asserts the override starts with `SageDockQA-`, and the override compiles only u
 
 Read this section before debugging anything.
 
+- **Never let a screen own a long operation.** This cost a whole release cycle. Setup was
+  owned by `Home`: it held the only `setup-progress` subscription, the progress card needed
+  a live event _and_ the frontend busy flag, and busy-ness was a string cleared in a
+  promise's `finally`. Navigating away lost every event with nothing to recover from, and a
+  command that never settled left the app permanently "Setting up SageMath" with no way
+  back. **If an operation can outlive a screen, the backend owns it and the screen
+  observes it.**
+- **A timeout must not be allowed to lie.** The old elevation path killed the outer,
+  unelevated PowerShell on timeout — which cannot stop the elevated `dism` it started — and
+  then reported the installation as stopped while it was still running. Quiet output is not
+  evidence of a hang; check the actual process.
+- **`exit $p.ExitCode` from `Start-Process -PassThru` can exit 0 for a run that never
+  happened**, because `ExitCode` may be null and `exit $null` is `exit 0`. Anything that
+  matters must come back through a result channel that can be validated, not an integer.
 - **Do not run two Rust builds concurrently on Windows.** The linker cannot replace a
   running executable (`LNK1104`). Clippy, `cargo test` and `tauri build` must be sequential.
 - **Close SageDock before a release build.** A running `sagedock.exe` holds the linker
@@ -441,6 +466,13 @@ State these honestly rather than implying coverage that does not exist:
 - **No clean-Windows verification exists.** Nothing here has been installed on a fresh
   Windows image lacking WSL. Windows-feature installation, UAC, and the reboot/resume path
   are covered by unit tests over pure decision logic only.
+- **The elevated install has never been executed.** This is the sharpest instance of the
+  point above, and it now covers freshly written code: the elevation supervisor, its
+  PowerShell helper, the result file and the process-liveness check were rewritten in the
+  setup-reliability work and have only ever run as pure functions in unit tests. On a
+  development machine that already has WSL, `install_wsl_elevated` is never reached at all.
+  [`../docs/SETUP-RELIABILITY-HANDOFF.md`](../docs/SETUP-RELIABILITY-HANDOFF.md) §7.1 lists
+  the six scenarios to run in a VM, in order.
 - **Building an installer is not installing one.** MSIs have been verified by reading their
   database back, not by running them.
 - **The integration suite is run rarely.** Check

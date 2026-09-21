@@ -42,13 +42,35 @@ impl SetupStage {
     }
 }
 
+/// What a progress report means, beyond which stage it belongs to.
+///
+/// The distinction exists because three things that look identical from outside — the app
+/// working, the user not having answered a permission prompt, and Windows grinding away
+/// invisibly — need completely different words on screen and completely different advice
+/// when they run long.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProgressKind {
+    /// SageDock is doing the work.
+    Working,
+    /// Nothing will happen until the user answers Windows' permission prompt.
+    AwaitingPermission,
+    /// Windows is applying changes SageDock cannot see inside.
+    WaitingForWindows,
+    /// Liveness only. Carries no new information and must never be shown as progress.
+    Heartbeat,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct SetupProgress {
     pub stage: SetupStage,
     pub title: String,
     pub detail: Option<String>,
-    /// 0.0–1.0 within the current stage, when the stage can measure itself.
+    /// 0.0–1.0 within the current stage, when the stage can measure itself. `None` means
+    /// the stage genuinely cannot measure itself — never a fabricated number to keep a bar
+    /// moving.
     pub percent: Option<f32>,
+    pub kind: ProgressKind,
 }
 
 impl SetupProgress {
@@ -58,6 +80,34 @@ impl SetupProgress {
             title: stage.title().to_string(),
             detail: detail.map(String::from),
             percent,
+            kind: ProgressKind::Working,
+        }
+    }
+
+    /// Waiting on somebody else. `on_user` distinguishes the prompt nobody has answered
+    /// from Windows working by itself.
+    fn waiting(stage: SetupStage, detail: &str, on_user: bool) -> Self {
+        Self {
+            stage,
+            title: stage.title().to_string(),
+            detail: Some(detail.to_string()),
+            percent: None,
+            kind: if on_user {
+                ProgressKind::AwaitingPermission
+            } else {
+                ProgressKind::WaitingForWindows
+            },
+        }
+    }
+
+    /// Proof the supervising thread is alive, and nothing more.
+    fn heartbeat(stage: SetupStage) -> Self {
+        Self {
+            stage,
+            title: stage.title().to_string(),
+            detail: None,
+            percent: None,
+            kind: ProgressKind::Heartbeat,
         }
     }
 }
@@ -148,6 +198,7 @@ pub enum SetupOutcome {
 pub fn run_setup(
     paths: &SetupPaths,
     sage_package: Option<&Path>,
+    operation_id: &str,
     on_progress: &mut dyn FnMut(SetupProgress),
 ) -> AppResult<SetupOutcome> {
     let mut state = PersistedSetupState::load(&paths.app_data_dir);
@@ -194,7 +245,31 @@ pub fn run_setup(
             None,
         ));
 
-        match wsl::install_wsl_elevated()? {
+        // The supervisor reports who it is waiting on, and beats while the helper works.
+        // Both are forwarded so the UI can distinguish "answer the prompt" from "Windows is
+        // busy" — the two situations that previously looked identical and together produced
+        // the reported stall.
+        let mut on_event = |event: wsl::ElevationEvent| {
+            let stage = SetupStage::InstallingWindowsComponents;
+            on_progress(match event {
+                wsl::ElevationEvent::AwaitingConsent => SetupProgress::waiting(
+                    stage,
+                    "Windows is asking for permission. Look for the permission window — it \
+                     can open behind SageDock or flash in the taskbar. Nothing continues \
+                     until you answer it.",
+                    true,
+                ),
+                wsl::ElevationEvent::HelperRunning => SetupProgress::waiting(
+                    stage,
+                    "Windows is switching on the components SageMath needs. This can take \
+                     several minutes and often shows no activity while it works.",
+                    false,
+                ),
+                wsl::ElevationEvent::Heartbeat => SetupProgress::heartbeat(stage),
+            });
+        };
+
+        match wsl::install_wsl_elevated(&paths.app_data_dir, operation_id, &mut on_event)? {
             // Windows said it needs a reboot. This is the only path that may claim one:
             // it comes from Windows' own exit code, not from guessing after a failure.
             wsl::ElevatedOutcome::RestartRequired => {

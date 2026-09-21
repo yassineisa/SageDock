@@ -10,6 +10,7 @@ import { About } from "./pages/About";
 import { Recovery } from "./pages/Recovery";
 import { Tools } from "./pages/Tools";
 import { TaskProvider } from "./state/TaskContext";
+import { SetupProvider } from "./state/SetupContext";
 
 /**
  * Either the first-run introduction or the app itself, never both.
@@ -53,7 +54,13 @@ export default function App() {
   return (
     <ConfigProvider>
       <TaskProvider>
-        <Root />
+        {/* Above the router on purpose. Setup belongs to the backend and outlives every
+            screen, so the thing observing it has to outlive every screen too — a provider
+            mounted inside a route would lose its subscription the moment the user
+            navigated, which is exactly the bug this replaces. */}
+        <SetupProvider>
+          <Root />
+        </SetupProvider>
       </TaskProvider>
     </ConfigProvider>
   );

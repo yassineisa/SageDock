@@ -17,7 +17,7 @@ outside that distribution. The runtime is disposable infrastructure; the noteboo
 Repair and reinstall replace the former and must never touch the latter.
 
 Rough size: **13,030 lines of Rust** across 35 files, **4,135 lines of frontend** across 22.
-(Measured at 1.4.3; the prose in this folder was otherwise written at 1.3.1.)
+(Measured at 1.4.4; the prose in this folder was otherwise written at 1.3.1.)
 
 ## Process and window model
 

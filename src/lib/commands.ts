@@ -68,7 +68,7 @@ export function isAppError(value: unknown): value is AppError {
 }
 
 /** Mirrors Rust's `SetupStage` — see src-tauri/src/runtime/provision.rs. */
-type SetupStage =
+export type SetupStage =
   | "preflight"
   | "installing_windows_components"
   | "waiting_for_restart"
@@ -79,14 +79,73 @@ type SetupStage =
   | "ready";
 
 /** How a setup run ended. Only "ready" means usable; the others are next steps, not errors. */
-export type SetupOutcome = "ready" | "awaiting_restart" | "needs_sage_package";
+type SetupOutcome = "ready" | "awaiting_restart" | "needs_sage_package";
 
-/** Streamed on the "setup-progress" event. */
-export interface SetupProgress {
+/**
+ * What setup is doing, at the level the user is asked to act on.
+ *
+ * Coarser than `SetupStage` on purpose: a stage names the step, a phase says whether
+ * anybody needs to do anything. "waiting_for_permission" and "waiting_for_windows" look
+ * identical from outside but need completely different words on screen.
+ */
+export type SetupPhase =
+  | "idle"
+  | "running"
+  | "waiting_for_permission"
+  | "waiting_for_windows"
+  | "restart_required"
+  | "completed"
+  | "failed"
+  | "interrupted";
+
+export type StepState = "pending" | "active" | "done" | "skipped" | "failed";
+
+export interface SetupStep {
   stage: SetupStage;
   title: string;
+  /** Why this step exists, in plain language. */
+  explanation: string;
+  state: StepState;
+}
+
+interface SetupLogLine {
+  at: number;
+  text: string;
+}
+
+/**
+ * The authoritative state of setup. Emitted on "setup-progress" and returned by
+ * `setupSnapshot()` — deliberately the same shape, so a screen that mounts halfway
+ * through recovers exactly what a screen that was listening all along already has.
+ */
+export interface SetupSnapshot {
+  /** Identifies one run. A snapshot from an older run must never replace a newer one. */
+  operation_id: string;
+  /** Increases on every published change, within an operation. */
+  seq: number;
+  phase: SetupPhase;
+  stage: SetupStage | null;
+  title: string;
   detail: string | null;
+  /** Only ever measured. `null` means the stage cannot measure itself — show indeterminate
+   * progress rather than inventing a number. */
   percent: number | null;
+  steps: SetupStep[];
+  started_at: number;
+  /** When the stage or phase last genuinely changed. Not touched by the heartbeat. */
+  updated_at: number;
+  /** Proof the backend thread is alive. Explicitly not evidence of progress. */
+  heartbeat_at: number;
+  outcome: SetupOutcome | null;
+  problem: AppError | null;
+  log: SetupLogLine[];
+}
+
+/** Whether setup is in flight, including while it waits on the user or on Windows. */
+export function isActivePhase(phase: SetupPhase): boolean {
+  return (
+    phase === "running" || phase === "waiting_for_permission" || phase === "waiting_for_windows"
+  );
 }
 
 /** The SageMath package setup would install from. */
@@ -236,7 +295,20 @@ export const commands = {
   getSetupStatus: () => invoke<SetupStatus>("get_setup_status"),
   /** Opens a native file picker in the backend. Resolves to null if the user closes it. */
   chooseSagePackage: () => invoke<SagePackageInfo | null>("choose_sage_package"),
-  runSetup: () => invoke<SetupOutcome>("run_setup"),
+  /**
+   * Starts setup and returns immediately with the opening snapshot.
+   *
+   * It deliberately does not resolve when setup *finishes*: setup belongs to the backend
+   * and outlives whichever screen started it. Watch `setup-progress` or poll
+   * `setupSnapshot()` for the rest.
+   */
+  runSetup: () => invoke<SetupSnapshot>("run_setup"),
+  /** The authoritative state of setup, answerable at any moment. */
+  setupSnapshot: () => invoke<SetupSnapshot>("setup_snapshot"),
+  /** Marks an interrupted run as seen, so it is reported once rather than every launch. */
+  acknowledgeSetupInterruption: () => invoke<void>("acknowledge_setup_interruption"),
+  /** A shareable report of the setup run, already redacted. */
+  setupDiagnostics: () => invoke<string>("setup_diagnostics"),
   newNotebook: (kind: NotebookKind) => invoke<NotebookLaunch>("new_notebook", { kind }),
   /** Stops SageMath and closes the app. The promise may never settle — the process exits. */
   shutdownAndQuit: () => invoke<void>("shutdown_and_quit"),

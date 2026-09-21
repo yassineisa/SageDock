@@ -57,6 +57,16 @@ type Options = {
   showOnboarding?: boolean;
   /** What the registry scan reports. Empty exercises the "default browser only" fallback. */
   browsers?: { id: string; name: string }[];
+  /**
+   * The phase the backend reports before anything is clicked. "interrupted" is what a
+   * launch after a crash or forced close looks like.
+   */
+  setupPhase?: "idle" | "interrupted";
+  /**
+   * Whether a started run finishes by itself. False leaves it running, which is the state
+   * every navigation and reconnection test needs to hold still.
+   */
+  setupCompletes?: boolean;
 };
 
 async function fixture(
@@ -99,6 +109,8 @@ async function fixture(
       { id: "Google Chrome", name: "Google Chrome" },
       { id: "Firefox-308046B0AF4A39CB", name: "Mozilla Firefox" },
     ],
+    setupPhase = "idle",
+    setupCompletes = true,
   }: Options = {},
 ) {
   await page.addInitScript(
@@ -117,6 +129,8 @@ async function fixture(
       pickedFile,
       showOnboarding,
       browsers,
+      setupPhase,
+      setupCompletes,
     }) => {
       let pickedFileName: string | null = pickedFile;
       let theme = "light";
@@ -228,6 +242,144 @@ async function fixture(
       const requests: { command: string; args: Record<string, any> }[] = [];
       const callbacks: Record<number, Function> = {};
       let id = 0;
+      // Which callback ids are listening to which event, so a test can fire one. Several
+      // screens can listen to the same event at once, so this is a list per name.
+      const listeners: Record<string, number[]> = {};
+
+      // --- setup, modelled the way the backend actually behaves -----------------------
+      //
+      // The real backend owns the operation and publishes a whole snapshot on every
+      // change. Mirroring that here — rather than having `run_setup` resolve with an
+      // outcome — is what lets these tests exercise reconnection, ordering, and the
+      // sequence rule at all.
+      const planStep = (stage: string, title: string, explanation: string) => ({
+        stage,
+        title,
+        explanation,
+        state: "pending",
+      });
+      const freshSteps = () => [
+        planStep(
+          "preflight",
+          "Checking your PC",
+          "Checks this PC can run SageMath before anything is changed.",
+        ),
+        planStep(
+          "installing_windows_components",
+          "Preparing Windows",
+          "Switches on the Windows features SageMath runs inside.",
+        ),
+        planStep(
+          "installing_environment",
+          "Installing SageMath",
+          "Unpacks SageMath, Python, and Jupyter onto this PC.",
+        ),
+        planStep(
+          "creating_workspace",
+          "Creating your notebooks folder",
+          "Creates your notebooks folder in Windows.",
+        ),
+        planStep("verifying", "Testing SageMath", "Runs SageMath and Python for real."),
+      ];
+      let setupSeq = 0;
+      let setupSnapshot: Record<string, any> = {
+        operation_id: "",
+        seq: 0,
+        phase: setupPhase,
+        stage: null,
+        title: "Setup hasn't started",
+        detail: null,
+        percent: null,
+        steps: freshSteps(),
+        started_at: 0,
+        updated_at: 0,
+        heartbeat_at: 0,
+        outcome: null,
+        problem: null,
+        log: [],
+      };
+      // Survives a reload, because the real backend does.
+      //
+      // `addInitScript` re-runs on every navigation, so without this a reload would reset
+      // the mock backend to idle — and a test for "a screen that mounts late recovers the
+      // state" would be asserting against a backend that had forgotten it too, which
+      // proves nothing. Session storage stands in for the backend outliving the webview.
+      try {
+        const saved = sessionStorage.getItem("qa-setup-snapshot");
+        if (saved) {
+          setupSnapshot = JSON.parse(saved);
+          setupSeq = setupSnapshot.seq ?? 0;
+          if (setupSnapshot.phase === "completed") ready = true;
+        }
+      } catch {
+        // No session storage available; the fixture simply starts fresh.
+      }
+      if (setupPhase === "interrupted") {
+        setupSnapshot = {
+          ...setupSnapshot,
+          operation_id: "interrupted-op",
+          seq: ++setupSeq,
+          title: "Setup was interrupted",
+          detail:
+            "SageDock closed while it was setting up. Choosing Continue setup picks up where it left off.",
+          started_at: Date.now() - 60_000,
+          updated_at: Date.now() - 60_000,
+        };
+      }
+
+      const emit = (event: string, payload: unknown) => {
+        for (const cb of listeners[event] ?? []) {
+          callbacks[cb]?.({ event, id: cb, payload });
+        }
+      };
+
+      const remember = () => {
+        try {
+          sessionStorage.setItem("qa-setup-snapshot", JSON.stringify(setupSnapshot));
+        } catch {
+          // Not available; a reload will just start fresh.
+        }
+      };
+
+      // Publishes a snapshot exactly as the backend would: bump the sequence, then emit.
+      const publishSetup = (patch: Record<string, any>) => {
+        setupSnapshot = { ...setupSnapshot, ...patch, seq: ++setupSeq };
+        // A completed run means the environment really is ready, so `get_setup_status`
+        // has to agree. Keeping the two in step here is what makes "completion re-enables
+        // the app" a test of the product rather than of the mock.
+        if (setupSnapshot.phase === "completed") ready = true;
+        remember();
+        emit("setup-progress", setupSnapshot);
+        return setupSnapshot;
+      };
+
+      // Exposed so a test can drive setup through states the fixture cannot reach on its
+      // own — a permission prompt, a stale event, a crash-shaped interruption.
+      (window as any).qaSetup = {
+        publish: publishSetup,
+        /** Emits a raw snapshot without touching the fixture's own sequence counter, so a
+         *  test can deliver something stale, duplicated, or out of order on purpose. */
+        emitRaw: (snapshot: Record<string, any>) => emit("setup-progress", snapshot),
+        current: () => setupSnapshot,
+        /**
+         * Advances the plan the way `SetupTracker::enter_stage` does: the named step takes
+         * `state`, everything before it that was running is finished, and anything before
+         * it never entered is marked as not needed on this PC.
+         *
+         * Mirroring the backend here matters — a naive version that only touched the named
+         * step left "Checking your PC" rendered as still running beside "Preparing
+         * Windows", which is a state the real backend cannot produce.
+         */
+        stage: (stage: string, state: string) => {
+          const index = setupSnapshot.steps.findIndex((s: any) => s.stage === stage);
+          return setupSnapshot.steps.map((s: any, i: number) => {
+            if (i === index) return { ...s, state };
+            if (i < index && s.state === "active") return { ...s, state: "done" };
+            if (i < index && s.state === "pending") return { ...s, state: "skipped" };
+            return s;
+          });
+        },
+      };
 
       // Mirrors `library::target_notebook_name`: a browser-saved `.json` notebook lands in
       // a workspace under the same name it would if it had been `.ipynb` all along.
@@ -267,6 +419,19 @@ async function fixture(
         },
       ];
 
+      // The event API calls this *before* invoking `plugin:event|unlisten`, so without it
+      // every unsubscribe threw and the unlisten never reached the mock below — leaving
+      // stale listeners registered and filling the console with unhandled rejections.
+      // Tests that assert a screen stopped listening need this to be real.
+      Object.defineProperty(window, "__TAURI_EVENT_PLUGIN_INTERNALS__", {
+        value: {
+          unregisterListener: (event: string, eventId: number) => {
+            listeners[event] = (listeners[event] ?? []).filter((x) => x !== eventId);
+          },
+        },
+        configurable: true,
+      });
+
       Object.defineProperty(window, "__TAURI_INTERNALS__", {
         value: {
           // `getCurrentWebview()` reads these. Without them it throws synchronously, and
@@ -283,6 +448,16 @@ async function fixture(
           invoke: async (command: string, args: Record<string, any> = {}) => {
             calls.push(command);
             requests.push({ command, args });
+            if (command === "plugin:event|listen") {
+              const name = String(args.event);
+              (listeners[name] ??= []).push(Number(args.handler));
+              return Number(args.handler);
+            }
+            if (command === "plugin:event|unlisten") {
+              const name = String(args.event);
+              listeners[name] = (listeners[name] ?? []).filter((x) => x !== Number(args.eventId));
+              return 1;
+            }
             if (command.startsWith("plugin:event|")) return 1;
             if (command === "get_config") {
               if (configUnavailable) throw new Error("Settings backend unavailable");
@@ -475,9 +650,65 @@ async function fixture(
             if (command === "open_downloaded_file_externally") return;
             if (command === "reveal_downloaded_file") return;
             if (command === "run_setup") {
-              ready = true;
-              return "ready";
+              // Refused while one is already in flight, exactly as the backend's operation
+              // lock does. A second click must not start a second installation.
+              if (
+                setupSnapshot.phase === "running" ||
+                setupSnapshot.phase === "waiting_for_permission" ||
+                setupSnapshot.phase === "waiting_for_windows"
+              ) {
+                throw {
+                  code: "APP_BUSY",
+                  severity: "warning",
+                  title: "SageDock is still setting up SageMath",
+                  message: "Wait for the current task to finish, then try again.",
+                };
+              }
+              setupSeq = 0;
+              setupSnapshot = {
+                operation_id: `op-${Date.now()}`,
+                seq: 0,
+                phase: "running",
+                stage: "preflight",
+                title: "Checking your PC",
+                detail: null,
+                percent: null,
+                steps: freshSteps().map((s) =>
+                  s.stage === "preflight" ? { ...s, state: "active" } : s,
+                ),
+                started_at: Date.now(),
+                updated_at: Date.now(),
+                heartbeat_at: Date.now(),
+                outcome: null,
+                problem: null,
+                log: [],
+              };
+              if (setupCompletes) {
+                // Finishes on the next tick, the way a real run finishes after the command
+                // has already returned — the point being that the caller never awaits it.
+                setTimeout(() => {
+                  ready = true;
+                  publishSetup({
+                    phase: "completed",
+                    stage: "ready",
+                    title: "Ready",
+                    detail: "SageMath and Python both ran a test notebook cell.",
+                    outcome: "ready",
+                    steps: freshSteps().map((s) => ({ ...s, state: "done" })),
+                  });
+                }, 50);
+              }
+              setupSnapshot.seq = ++setupSeq;
+              remember();
+              return setupSnapshot;
             }
+            if (command === "setup_snapshot") return setupSnapshot;
+            if (command === "acknowledge_setup_interruption") {
+              setupSnapshot = { ...setupSnapshot, phase: "idle", seq: ++setupSeq };
+              return;
+            }
+            if (command === "setup_diagnostics")
+              return "SageDock setup diagnostics\nPhase: Running\n";
             if (command === "new_notebook") return { relative_path: "Test.ipynb" };
             if (command === "open_notebook") {
               if (jupyterFails)
@@ -598,6 +829,8 @@ async function fixture(
       pickedFile,
       showOnboarding,
       browsers,
+      setupPhase,
+      setupCompletes,
     },
   );
 }
@@ -1889,4 +2122,450 @@ test("a download saved outside the Downloads folder says which folder it went to
     )
     .toBe(true);
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+// --- setup reliability -------------------------------------------------------------------
+//
+// These cover the behaviour that made setup feel broken: state owned by the screen that
+// started it, one indefinite spinner standing in for three different situations, and an
+// explanation link that navigated away from the progress it sat beside.
+//
+// The fixture models the backend faithfully — `run_setup` returns a snapshot immediately
+// and never resolves with the outcome — so a test passing here exercises the same contract
+// the real app does.
+
+/** Starts setup and waits until the progress view is actually on screen. */
+async function startSetup(page: Page) {
+  await page.getByRole("button", { name: "Set up SageDock", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Setup progress" })).toBeVisible();
+}
+
+test("setup survives leaving Home and coming back", async ({ page }) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "running",
+      stage: "installing_environment",
+      title: "Installing SageMath",
+      detail: "Unpacking the SageMath package.",
+      steps: (window as any).qaSetup.stage("installing_environment", "active"),
+    }),
+  );
+  await expect(page.getByRole("region", { name: "Setup progress" })).toContainText(
+    "Installing SageMath",
+  );
+
+  // The exact move that used to strand the app: navigate away mid-setup.
+  await page.getByRole("link", { name: "Settings", exact: false }).click();
+  await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+  // Setup stays visible and reachable from every page rather than disappearing.
+  await expect(page.locator(".setup-banner")).toContainText("Setting up SageMath");
+  await expect(
+    page.locator(".setup-banner").getByRole("link", { name: "Show setup" }),
+  ).toBeVisible();
+
+  // An event arriving while Home is unmounted must not be lost. It used to be: Home held
+  // the only subscription and tore it down on unmount.
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "running",
+      stage: "verifying",
+      title: "Testing SageMath",
+      detail: "Running a test notebook cell.",
+      steps: (window as any).qaSetup.stage("verifying", "active"),
+    }),
+  );
+
+  await page.getByRole("link", { name: "Home", exact: false }).click();
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  // Recovered immediately, showing the progress that happened while away — not a blank
+  // card, not "Checking SageMath…", and not a restart.
+  await expect(panel).toContainText("Testing SageMath");
+  await expect(panel).toContainText("Running a test notebook cell.");
+  await expect(page.getByText("Checking SageMath…")).toHaveCount(0);
+
+  // Crucially: coming back did not start setup again.
+  const starts = await page.evaluate(
+    () => (window as any).qaCalls.filter((c: string) => c === "run_setup").length,
+  );
+  expect(starts).toBe(1);
+});
+
+test("a screen mounting after setup already started recovers the full picture", async ({
+  page,
+}) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "running",
+      stage: "creating_workspace",
+      title: "Creating your notebooks folder",
+      steps: (window as any).qaSetup.stage("creating_workspace", "active"),
+    }),
+  );
+
+  // A full reload is the harshest version of "mounted late": no event is pending, so the
+  // only way to know anything is to ask. A screen that only listened would show nothing.
+  await page.reload();
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  await expect(panel).toContainText("Creating your notebooks folder");
+  await expect(panel).toContainText("SageDock is working");
+});
+
+test("a stale or out-of-order update cannot roll progress backwards", async ({ page }) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "running",
+      stage: "verifying",
+      title: "Testing SageMath",
+      steps: (window as any).qaSetup.stage("verifying", "active"),
+    }),
+  );
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  // Scoped to the heading on purpose. Every stage name also appears in the step list
+  // below, so asserting against the whole panel would pass whatever the current stage is
+  // — the heading is the only place that says which one is *now*.
+  const current = panel.locator("h3");
+  await expect(current).toHaveText("Testing SageMath");
+
+  // A snapshot from earlier in the same run arriving late — what a slow query answering
+  // after a fast event looks like.
+  await page.evaluate(() => {
+    const snapshot = (window as any).qaSetup.current();
+    (window as any).qaSetup.emitRaw({
+      ...snapshot,
+      seq: snapshot.seq - 3,
+      stage: "preflight",
+      title: "Checking your PC",
+    });
+  });
+  await expect(current).toHaveText("Testing SageMath");
+
+  // The same sequence number again (a duplicate delivery) is equally ignored.
+  await page.evaluate(() => {
+    const snapshot = (window as any).qaSetup.current();
+    (window as any).qaSetup.emitRaw({ ...snapshot, title: "Duplicate" });
+  });
+  await expect(current).toHaveText("Testing SageMath");
+
+  // But a *different* operation is always newer information, even with a lower sequence:
+  // a fresh run starts counting again from zero.
+  await page.evaluate(() => {
+    const snapshot = (window as any).qaSetup.current();
+    (window as any).qaSetup.emitRaw({
+      ...snapshot,
+      operation_id: "a-different-run",
+      seq: 1,
+      title: "A different run",
+    });
+  });
+  await expect(current).toHaveText("A different run");
+});
+
+test("clicking Set up twice does not start two installations", async ({ page }) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  const button = page.getByRole("button", { name: "Set up SageDock", exact: true });
+  await button.click();
+  await expect(page.getByRole("region", { name: "Setup progress" })).toBeVisible();
+
+  // The invitation to start setup is gone while setup is running, so a second click
+  // cannot be delivered at all.
+  await expect(button).toHaveCount(0);
+
+  // The UI being tidy is not the real protection, though — a race, a stale window, or a
+  // replayed IPC call would bypass it entirely. So this also goes behind the UI and calls
+  // the command directly: the backend's operation lock must refuse it.
+  const refused = await page.evaluate(async () => {
+    try {
+      await (window as any).__TAURI_INTERNALS__.invoke("run_setup", {});
+      return null;
+    } catch (err: any) {
+      return err?.code ?? "unknown";
+    }
+  });
+  expect(refused).toBe("APP_BUSY");
+
+  // And no second installation was started by either route.
+  const started = await page.evaluate(
+    () => (window as any).qaCalls.filter((c: string) => c === "run_setup").length,
+  );
+  expect(started).toBe(2); // one from the click, one refused by the lock
+  await expect(page.getByRole("region", { name: "Setup progress" })).toBeVisible();
+});
+
+test("a permission prompt is named as waiting for the user, not shown as working", async ({
+  page,
+}) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "waiting_for_permission",
+      stage: "installing_windows_components",
+      title: "Preparing Windows",
+      detail:
+        "Windows is asking for permission. Look for the permission window — it can open behind SageDock or flash in the taskbar. Nothing continues until you answer it.",
+      steps: (window as any).qaSetup.stage("installing_windows_components", "active"),
+    }),
+  );
+
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  // The distinction the old UI could not make, and the whole fix for the reported stall:
+  // a prompt nobody noticed used to look exactly like the app working.
+  await expect(panel).toContainText("Waiting for you");
+  await expect(panel).toContainText("it can open behind SageDock");
+  await expect(panel).not.toContainText("SageDock is working");
+
+  // And from any other page, the app-wide strip says the same thing.
+  await page.getByRole("link", { name: "Settings", exact: false }).click();
+  await expect(page.locator(".setup-banner")).toContainText("Setup needs your permission");
+});
+
+test("waiting for Windows is distinguished from waiting for the user", async ({ page }) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "waiting_for_windows",
+      stage: "installing_windows_components",
+      title: "Preparing Windows",
+      detail: "Windows is switching on the components SageMath needs.",
+      steps: (window as any).qaSetup.stage("installing_windows_components", "active"),
+    }),
+  );
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  await expect(panel).toContainText("Waiting for Windows");
+  await expect(panel).not.toContainText("Waiting for you");
+});
+
+test("a heartbeat is labelled as liveness rather than shown as progress", async ({ page }) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+
+  // A heartbeat moves only the liveness timestamp — the backend deliberately leaves
+  // `updated_at` alone, because a beat proves nothing is advancing.
+  await page.evaluate(() => {
+    const current = (window as any).qaSetup.current();
+    (window as any).qaSetup.publish({ heartbeat_at: current.updated_at + 30000 });
+  });
+
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  await expect(panel).toContainText("isn't a sign that the step is advancing");
+});
+
+test("a failed setup explains itself and offers the next step", async ({ page }) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "failed",
+      stage: "verifying",
+      title: "SageMath did not answer",
+      detail: "Your notebooks are safe. The test notebook cell did not run.",
+      steps: (window as any).qaSetup.stage("verifying", "failed"),
+      problem: {
+        code: "KERNEL_FAILED",
+        severity: "error",
+        title: "SageMath did not answer",
+        message: "Your notebooks are safe. The test notebook cell did not run.",
+      },
+    }),
+  );
+
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  await expect(panel).toContainText("SageMath did not answer");
+  // The failing step is named, so the user can tell how far it got.
+  await expect(panel.locator(".setup-step.is-failed")).toContainText("Testing SageMath");
+  // Every failure keeps a route to a diagnostic report.
+  await expect(
+    panel.getByRole("button", { name: "Export diagnostics", exact: true }),
+  ).toBeVisible();
+  // Retrying is possible again: a failed run must release the app, not hold it busy.
+  await expect(page.getByRole("button", { name: /Set up SageDock|Finish setup/ })).toBeEnabled();
+});
+
+test("an interrupted run is reported on the next launch instead of silently resumed", async ({
+  page,
+}) => {
+  await fixture(page, {
+    installed: false,
+    running: false,
+    setupPhase: "interrupted",
+    setupCompletes: false,
+  });
+  await page.goto("/");
+
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  await expect(panel).toContainText("Setup was interrupted");
+  await expect(panel).toContainText("picks up where it left off");
+
+  // Nothing was started on our behalf. The old failure mode was the opposite — restoring
+  // a stale "running" flag and leaving the app stuck behind it.
+  expect(await page.evaluate(() => (window as any).qaCalls.includes("run_setup"))).toBe(false);
+
+  // Dismissing clears the record rather than starting anything.
+  await page.getByRole("button", { name: "Dismiss", exact: true }).click();
+  await expect(panel).toBeHidden();
+  expect(
+    await page.evaluate(() => (window as any).qaCalls.includes("acknowledge_setup_interruption")),
+  ).toBe(true);
+});
+
+test("a completed setup clears the busy state across every screen", async ({ page }) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+  // Busy while it runs: the app-wide strip is showing.
+  await expect(page.locator(".setup-banner")).toBeVisible();
+
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "completed",
+      stage: "ready",
+      title: "Ready",
+      detail: "SageMath and Python both ran a test notebook cell.",
+      outcome: "ready",
+      steps: (window as any).qaSetup.current().steps.map((s: any) => ({ ...s, state: "done" })),
+    }),
+  );
+
+  // The strip clears everywhere, not only on Home.
+  await expect(page.locator(".setup-banner")).toBeHidden();
+  await page.getByRole("link", { name: "Settings", exact: false }).click();
+  await expect(page.locator(".setup-banner")).toBeHidden();
+  await page.getByRole("link", { name: "Home", exact: false }).click();
+  // And Home is usable again rather than left disabled.
+  await expect(page.getByRole("button", { name: "New Sage Notebook", exact: true })).toBeEnabled();
+});
+
+test("What happens during setup explains this installation without leaving the page", async ({
+  page,
+}) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "What happens during setup?", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+
+  // It answers the question it is attached to. It used to open /help, the general
+  // questions page, which covered none of this.
+  await expect(dialog).toContainText("Administrator permission");
+  await expect(dialog).toContainText("A restart may be needed");
+  await expect(dialog).toContainText("Where your notebooks are kept");
+  await expect(dialog).toContainText("If setup is interrupted");
+  // The real stages, from the same snapshot the progress view uses.
+  await expect(dialog).toContainText("Installing SageMath");
+  await expect(dialog).toContainText("Testing SageMath");
+
+  // And it did not navigate: closing returns to Home with nothing lost.
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
+});
+
+test("the explanation stays available during setup and marks the running step", async ({
+  page,
+}) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "running",
+      stage: "installing_environment",
+      title: "Installing SageMath",
+      steps: (window as any).qaSetup.stage("installing_environment", "active"),
+    }),
+  );
+
+  // Reachable from the progress view itself, without interrupting the run.
+  await page
+    .getByRole("region", { name: "Setup progress" })
+    .getByRole("button", { name: "What happens during setup?", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Setup is running now");
+  await expect(dialog.locator(".setup-step.is-current")).toContainText("Installing SageMath");
+
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
+  // Setup carried on regardless.
+  await expect(page.getByRole("region", { name: "Setup progress" })).toContainText(
+    "Installing SageMath",
+  );
+});
+
+test("captures a setup run in progress and its explanation", async ({ page }) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "waiting_for_windows",
+      stage: "installing_windows_components",
+      title: "Preparing Windows",
+      detail:
+        "Windows is switching on the components SageMath needs. This can take several minutes and often shows no activity while it works.",
+      steps: (window as any).qaSetup.stage("installing_windows_components", "active"),
+      log: [
+        { at: Date.now() - 4000, text: "Stage: Checking your PC" },
+        { at: Date.now(), text: "Stage: Preparing Windows" },
+      ],
+    }),
+  );
+  // Both the in-progress panel and the modal are new surfaces, so both are captured for
+  // the design review rather than only described in a handoff.
+  await expect(page.getByRole("region", { name: "Setup progress" })).toContainText(
+    "Waiting for Windows",
+  );
+  await page.screenshot({ path: "docs/qa/setup-running-light.png", fullPage: true });
+
+  await page
+    .getByRole("region", { name: "Setup progress" })
+    .getByRole("button", { name: "What happens during setup?", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.screenshot({ path: "docs/qa/setup-explainer-light.png" });
+});
+
+test("the technical view and diagnostic export are available without leaving setup", async ({
+  page,
+}) => {
+  await fixture(page, { installed: false, running: false, setupCompletes: false });
+  await page.goto("/");
+  await startSetup(page);
+  await page.evaluate(() =>
+    (window as any).qaSetup.publish({
+      phase: "running",
+      stage: "installing_environment",
+      title: "Installing SageMath",
+      log: [{ at: Date.now(), text: "Stage: Installing SageMath" }],
+    }),
+  );
+
+  const panel = page.getByRole("region", { name: "Setup progress" });
+  const toggle = panel.getByRole("button", { name: "Show technical details", exact: true });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(panel.locator(".setup-log")).toContainText("Stage: Installing SageMath");
+
+  await panel.getByRole("button", { name: "Export diagnostics", exact: true }).click();
+  expect(await page.evaluate(() => (window as any).qaCalls.includes("setup_diagnostics"))).toBe(
+    true,
+  );
 });

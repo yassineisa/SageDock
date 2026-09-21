@@ -6,6 +6,7 @@ import {
   commands,
   formatBytes,
   friendlyError,
+  isActivePhase,
   isAppError,
   type BackupProgress,
   type ChosenBackup,
@@ -14,12 +15,14 @@ import {
   type FilesDropped,
   type NotebookEntry,
   type NotebookKind,
-  type SetupProgress,
   type SetupStatus,
   type ToolReport,
   type WorkspaceView,
 } from "../lib/commands";
 import { useTask } from "../state/TaskContext";
+import { useSetup } from "../state/SetupContext";
+import { SetupProgress } from "../components/SetupProgress";
+import { SetupExplainer } from "../components/SetupExplainer";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { ChoiceDialog, type ChoiceOption } from "../components/ChoiceDialog";
@@ -40,12 +43,16 @@ const CAPABILITIES: { id: "cpp" | "fortran" | "build"; name: string; icon: IconN
 
 export function Home() {
   const task = useTask();
+  const setup = useSetup();
   const [status, setStatus] = useState<SetupStatus | null>(null);
   const [environment, setEnvironment] = useState<EnvironmentStatus | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceView[]>([]);
   const [loadError, setLoadError] = useState<ReturnType<typeof friendlyError> | null>(null);
-  const [progress, setProgress] = useState<SetupProgress | null>(null);
   const [transfer, setTransfer] = useState<BackupProgress | null>(null);
+  // Opens the dedicated explanation. A modal rather than a route: navigating to /help
+  // mid-setup was both the wrong answer to the question and the surest way to lose the
+  // screen that was showing progress.
+  const [explaining, setExplaining] = useState(false);
   const [recent, setRecent] = useState<NotebookEntry[]>([]);
   // Notebooks sitting in the Windows Downloads folder. Kept separate from `recent` because
   // they are not in a workspace yet: opening one copies it in first.
@@ -108,12 +115,14 @@ export function Home() {
     if (!task.busy) void refresh();
   }, [task.busy]);
 
+  // Setup itself is no longer subscribed to here. It belongs to `SetupProvider`, which
+  // outlives this screen — Home is one of several observers and holds none of the state.
+  // What Home does still need is to re-read *its own* data when setup reaches an end, so
+  // the workspace list and environment status reflect the newly installed runtime.
+  const setupPhase = setup.snapshot?.phase;
   useEffect(() => {
-    const sub = listen<SetupProgress>("setup-progress", (e) => setProgress(e.payload));
-    return () => {
-      sub.then((f) => f()).catch(() => {});
-    };
-  }, []);
+    if (setupPhase === "completed" || setupPhase === "failed") void refresh();
+  }, [setupPhase]);
 
   useEffect(() => {
     const sub = listen<BackupProgress>("backup-progress", (e) => setTransfer(e.payload));
@@ -188,17 +197,17 @@ export function Home() {
     };
   }, []);
 
-  const busy = !!task.busy || !!status?.busy;
+  // Setup is no longer part of `task.busy`: it is owned by the backend and reported by
+  // its own snapshot, so a running setup disables the rest of Home without the frontend
+  // having to hold a promise open to remember it.
+  const setupActive = !!setup.snapshot && isActivePhase(setup.snapshot.phase);
+  const busy = !!task.busy || !!status?.busy || setupActive;
   const ready = status?.environment_ready && !status.problem;
   const running = !!environment?.running;
   // Three states, not two: a failed status query must not be reported as "stopped".
   const runningUnknown = environment?.running == null;
 
-  const start = () =>
-    void task.run("Setting up SageMath", async () => {
-      await commands.runSetup();
-      await refresh();
-    });
+  const start = () => void setup.start();
 
   const create = (kind: NotebookKind) =>
     void task.run("Opening notebook", async () => {
@@ -541,6 +550,28 @@ export function Home() {
         </div>
       )}
 
+      {/* Deliberately outside the "needs setup" card below. That card is hidden once the
+          environment is ready or a health problem is showing, and a setup run has to stay
+          visible through both — including the moment it succeeds, when `ready` flips and
+          the card disappears out from under it. */}
+      {setup.snapshot && setup.snapshot.phase !== "idle" && (
+        <SetupProgress snapshot={setup.snapshot} onExplain={() => setExplaining(true)} />
+      )}
+
+      {/* A run that never recorded an ending. Reported once, with the honest reason and a
+          next step, rather than silently resumed or silently forgotten. */}
+      {setup.snapshot?.phase === "interrupted" && (
+        <div className="btn-row" style={{ marginTop: "var(--sp-3)" }}>
+          <button className="btn btn-accent" disabled={busy || setup.starting} onClick={start}>
+            <Icon name="refresh" size={16} />
+            Continue setup
+          </button>
+          <button className="btn btn-subtle" onClick={() => void setup.acknowledgeInterruption()}>
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* One card for the environment's status and the two actions that act on it, rather
           than a separate "Start working" card repeating the same context above a second,
           plainer one. Tied to the environment being installed, not to setup being complete,
@@ -589,7 +620,12 @@ export function Home() {
         </section>
       )}
 
-      {status && !ready && !status.problem && (
+      {/* Hidden while a run is in flight. The progress panel above already says what is
+          happening and offers the explanation, so leaving this up put a disabled "Set up
+          SageDock" and a second identical "What happens during setup?" on the same screen
+          — two controls for one thing, one of them dead. It returns for a failed or
+          interrupted run, which is exactly when the retry button is wanted again. */}
+      {status && !ready && !status.problem && !setupActive && (
         <section className="card">
           <div className="setup-head">
             <Icon name="info" size={20} />
@@ -629,15 +665,10 @@ export function Home() {
             restart.
           </p>
 
-          {progress && task.busy && (
-            <div className="progress-block" role="status">
-              <div className="progress-top">
-                <span className="spinner" />
-                {progress.title}
-              </div>
-              <p>{progress.detail || "This step can take several minutes."}</p>
-              <progress aria-label={progress.title} max={1} value={progress.percent ?? undefined} />
-            </div>
+          {setup.startError && (
+            <p className="small" role="status" style={{ marginTop: "var(--sp-3)" }}>
+              {setup.startError}
+            </p>
           )}
 
           <div className="btn-row" style={{ marginTop: "var(--sp-4)" }}>
@@ -646,18 +677,24 @@ export function Home() {
                 <button className="btn btn-accent" disabled={busy} onClick={() => setRestart(true)}>
                   Restart Windows
                 </button>
-                <button className="btn" disabled={busy} onClick={start}>
+                <button className="btn" disabled={busy || setup.starting} onClick={start}>
                   Continue setup
                 </button>
               </>
             ) : (
-              <button className="btn btn-accent" disabled={busy} onClick={start}>
-                {status.environment_installed ? "Finish setup" : "Set up SageDock"}
+              <button className="btn btn-accent" disabled={busy || setup.starting} onClick={start}>
+                {setup.snapshot?.phase === "interrupted"
+                  ? "Continue setup"
+                  : status.environment_installed
+                    ? "Finish setup"
+                    : "Set up SageDock"}
               </button>
             )}
-            <Link to="/help" className="btn btn-subtle">
+            {/* Opens the explanation in place. It used to link to /help, which answered a
+                different question and navigated away from the progress it was beside. */}
+            <button type="button" className="btn btn-subtle" onClick={() => setExplaining(true)}>
               What happens during setup?
-            </Link>
+            </button>
           </div>
 
           {!status.sage_package && !status.environment_installed && (
@@ -1279,6 +1316,8 @@ export function Home() {
           </p>
         </ConfirmDialog>
       )}
+
+      {explaining && <SetupExplainer onClose={() => setExplaining(false)} />}
 
       {deletingDownload && (
         <ConfirmDialog

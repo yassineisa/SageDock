@@ -773,6 +773,165 @@ progress::-webkit-progress-value {
   border-radius: 2px;
 }
 
+/* ============ setup progress ============ */
+/* Built from the existing status tokens rather than new colours, so both themes and the
+   "never colour alone" rule carry over unchanged — every state here is also a word. */
+.setup-progress {
+  margin: var(--sp-4) 0;
+}
+.setup-progress-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+}
+.setup-progress-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 2px var(--sp-2);
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+}
+.setup-progress-head.is-working .setup-progress-badge {
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+}
+.setup-progress-head.is-waiting .setup-progress-badge {
+  background: var(--layer-alt);
+  color: var(--text-2);
+}
+/* The one state that needs the user to act, so it is the one state that stands out. */
+.setup-progress-head.is-attention .setup-progress-badge {
+  background: var(--caution-bg);
+  color: var(--caution);
+}
+.setup-elapsed {
+  margin-left: auto;
+  color: var(--text-3);
+}
+.setup-progress-detail {
+  margin: var(--sp-2) 0 var(--sp-3);
+  max-width: 70ch;
+}
+.setup-heartbeat {
+  margin-top: var(--sp-2);
+  color: var(--text-3);
+  max-width: 70ch;
+}
+.setup-slow {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--caution-bg);
+  border-radius: var(--radius-control);
+}
+.setup-slow .icon {
+  color: var(--caution);
+  flex-shrink: 0;
+}
+.setup-slow p {
+  margin-top: var(--sp-1);
+  max-width: 62ch;
+}
+.setup-steps {
+  list-style: none;
+  margin: var(--sp-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.setup-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2);
+  border-radius: var(--radius-control);
+}
+.setup-step .icon {
+  margin-top: 2px;
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+.setup-step.is-done .icon {
+  color: var(--ok);
+}
+.setup-step.is-active .icon {
+  color: var(--accent);
+}
+.setup-step.is-failed .icon {
+  color: var(--danger);
+}
+.setup-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.setup-step-text small {
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 16px;
+  max-width: 68ch;
+}
+.setup-step.is-pending .setup-step-text strong,
+.setup-step.is-skipped .setup-step-text strong {
+  color: var(--text-2);
+  font-weight: 400;
+}
+.setup-step.is-active,
+.setup-step.is-current {
+  background: var(--accent-subtle);
+}
+.setup-progress-actions {
+  margin-top: var(--sp-4);
+  flex-wrap: wrap;
+}
+.setup-log {
+  margin-top: var(--sp-3);
+  padding: var(--sp-3);
+  background: var(--layer-alt);
+  border-radius: var(--radius-control);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.setup-log ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.setup-explainer {
+  max-width: 640px;
+}
+.setup-explainer h3 {
+  margin-top: var(--sp-4);
+}
+.setup-explainer-live {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  border-radius: var(--radius-control);
+  font-size: 13px;
+}
+.setup-banner.is-attention {
+  background: var(--caution-bg);
+  border-color: var(--caution);
+}
+.btn-inline {
+  padding: 2px var(--sp-2);
+  font-size: 12px;
+}
+
 /* ============ status / feedback ============ */
 .spinner {
   width: 14px;
@@ -886,6 +1045,12 @@ progress::-webkit-progress-value {
   background: var(--layer);
   color: var(--text);
   box-shadow: var(--elev-flyout);
+  /* A dialog taller than the window used to grow off the top of the screen, taking its
+     own title with it and leaving no way to scroll back. The title and the actions stay
+     put; only the body scrolls. */
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
 }
 .dialog::backdrop {
   background: rgba(0, 0, 0, 0.4);
@@ -900,6 +1065,14 @@ progress::-webkit-progress-value {
   font-size: 14px;
   line-height: 20px;
   color: var(--text-2);
+  overflow-y: auto;
+  /* Without a basis, a flex child refuses to shrink below its content height and the
+     max-height above would have no effect. */
+  min-height: 0;
+}
+.dialog h2,
+.dialog-actions {
+  flex-shrink: 0;
 }
 .dialog-body strong {
   color: var(--text);

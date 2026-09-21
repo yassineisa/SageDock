@@ -1,20 +1,24 @@
 # What is tested, and what is not
 
 Written for a reviewer deciding how much confidence the test suite actually earns. The
-counts below were produced by running the suites at version **1.4.3**, not copied from an
+counts below were produced by running the suites at version **1.4.4**, not copied from an
 earlier document.
 
 ## Current results
 
 | Suite                  | Command                          | Result                               |
 | ---------------------- | -------------------------------- | ------------------------------------ |
-| Rust unit              | `npm run test:rust`              | **209 passed, 0 failed, 7 ignored**  |
-| Mocked UI (Playwright) | `npm run test:ui`                | **55 passed**                        |
+| Rust unit              | `npm run test:rust`              | **235 passed, 0 failed, 7 ignored**  |
+| Mocked UI (Playwright) | `npm run test:ui`                | **69 passed**                        |
 | Real integration (WSL) | `scripts/test-fresh-install.ps1` | 5 passed, **not re-run since 1.2.0** |
 
-The tree contains 216 `#[test]` functions; 7 carry `#[ignore]` and are the integration
-tests, which is why the default run reports 209 passed and 7 ignored. Total across all
-three suites: **271**.
+The tree contains 242 `#[test]` functions; 7 carry `#[ignore]` and are the integration
+tests, which is why the default run reports 235 passed and 7 ignored. Total across all
+three suites: **311**.
+
+The setup-reliability work added 26 Rust tests and 14 UI tests. What they do and do not
+establish — in particular that **the elevated install path has never been executed** — is
+set out in [SETUP-RELIABILITY-HANDOFF.md](../SETUP-RELIABILITY-HANDOFF.md).
 
 The integration row is the one to read carefully. It last ran at source version 1.2.0.
 Everything added since — the compiler installation test, the JupyterLab launcher test, and
@@ -47,17 +51,24 @@ WebView2 download event that feeds it.
 Test counts by module, highest first:
 
 ```
-workspaces.rs 21   backup.rs 21   scientific.rs 17   runtime/provision.rs 17
-runtime/image.rs 13   runtime/wsl.rs 12   system/reboot.rs 10   state.rs 10
-runtime/workspace.rs 10   downloads.rs 9   jupyter/notebook.rs 8   jupyter/mod.rs 7
-system/wsl.rs 6   system/virtualization.rs 6   system/types.rs 6   library.rs 6
-e2e.rs 6   config.rs 6   browsers.rs 6   system/windows_version.rs 4
-system/disk_space.rs 4   system/architecture.rs 4   system/process.rs 3
-system/mod.rs 1   storage.rs 1   home.rs 1   desktop.rs 1
+workspaces.rs 21   backup.rs 21   setup.rs 18   runtime/wsl.rs 18
+scientific.rs 17   runtime/provision.rs 17   runtime/image.rs 13   state.rs 12
+system/reboot.rs 10   runtime/workspace.rs 10   downloads.rs 9   jupyter/notebook.rs 8
+jupyter/mod.rs 7   system/wsl.rs 6   system/virtualization.rs 6   system/types.rs 6
+library.rs 6   e2e.rs 6   config.rs 6   browsers.rs 6
+system/windows_version.rs 4   system/disk_space.rs 4   system/architecture.rs 4
+system/process.rs 3   system/mod.rs 1   storage.rs 1   home.rs 1   desktop.rs 1
 ```
 
 The concentration in `workspaces.rs`, `backup.rs` and `provision.rs` is deliberate: those
 are the three modules that can lose a student's work or leave an installation half-built.
+
+`setup.rs` and the elevation half of `runtime/wsl.rs` joined them in the setup-reliability
+work, for the same reason: between them they decide whether an installation can be left in
+a state nobody can get out of. Note the split in what those 18 `wsl.rs` tests cover —
+report parsing, operation-id matching, process-id parsing and PowerShell quoting are all
+pure and genuinely tested; `install_wsl_elevated` itself is the untested boundary, and it
+has never run.
 
 `scientific.rs` follows the same gather/interpret discipline. Its tests all exercise pure
 functions — `state_of`, `missing_packages`, `classify_apt_failure`, `assemble` — against
@@ -110,13 +121,13 @@ and the override only compiles under `#[cfg(test)]`.
 has happened since, so the compiler installation, the real JupyterLab landing page, and the
 apt failure paths are all unexecuted.
 
-## The 55 UI tests
+## The 69 UI tests
 
 `npm run test:ui` starts the Vite dev server on `127.0.0.1:1420` and drives it with
 Playwright in **installed Microsoft Edge** (`channel: "msedge"` in
 [`playwright.config.ts`](../../playwright.config.ts)), with the Tauri IPC layer mocked.
 
-All 55 live in [`tests/ui/workspace.spec.ts`](../../tests/ui/workspace.spec.ts):
+All 69 live in [`tests/ui/workspace.spec.ts`](../../tests/ui/workspace.spec.ts):
 
 1. workspace, notebook creation, search, and navigation
 2. new computer gets a clear setup path
@@ -175,8 +186,34 @@ All 55 live in [`tests/ui/workspace.spec.ts`](../../tests/ui/workspace.spec.ts):
 53. Settings can bring the introduction back, and opens the workspaces folder
 54. the Settings browser picker appears only when notebooks open in a browser
 55. a download saved outside the Downloads folder says which folder it went to
+56. setup survives leaving Home and coming back
+57. a screen mounting after setup already started recovers the full picture
+58. a stale or out-of-order update cannot roll progress backwards
+59. clicking Set up twice does not start two installations
+60. a permission prompt is named as waiting for the user, not shown as working
+61. waiting for Windows is distinguished from waiting for the user
+62. a heartbeat is labelled as liveness rather than shown as progress
+63. a failed setup explains itself and offers the next step
+64. an interrupted run is reported on the next launch instead of silently resumed
+65. a completed setup clears the busy state across every screen
+66. What happens during setup explains this installation without leaving the page
+67. the explanation stays available during setup and marks the running step
+68. captures a setup run in progress and its explanation
+69. the technical view and diagnostic export are available without leaving setup
 
-Tests 10, 11, 25 and 50 double as screenshot generators, writing into [`docs/qa/`](../qa/).
+Tests 56 to 69 cover the setup-reliability work. They exercise real React, real routing and
+real event plumbing against a fixture that models the backend faithfully — `run_setup`
+returns a snapshot immediately and never resolves with an outcome, the mock refuses
+overlapping runs, and its state survives a page reload. They still prove nothing about a
+real elevated install, which has never been executed; see
+[SETUP-RELIABILITY-HANDOFF.md](../SETUP-RELIABILITY-HANDOFF.md) §7.
+
+Tests 10, 11, 25, 50 and 68 double as screenshot generators, writing into
+[`docs/qa/`](../qa/). Test 68 exists because assertions cannot see layout: reviewing its
+output caught two defects the passing suite did not — a dialog taller than the window
+growing off the top of the screen with no way to scroll back, and the "Set up SageDock"
+card still sitting below the live progress panel, offering a dead button and a second copy
+of "What happens during setup?". **Read the screenshots when changing these surfaces.**
 Tests 8, 9, 14 and 25 assert no horizontal overflow at the 860px minimum window width
 declared in `tauri.conf.json`.
 
@@ -202,7 +239,7 @@ tests 41 and 55 show the pattern.
 
 ## The validation gate
 
-Run from the repository root. This is the full gate, and all of it passed at 1.4.3 except
+Run from the repository root. This is the full gate, and all of it passed at 1.4.4 except
 the integration runner as noted above:
 
 ```powershell

@@ -1,6 +1,6 @@
 [package]
 name = "sagedock"
-version = "1.4.3"
+version = "1.4.4"
 description = "SageDock desktop shell"
 authors = ["Yassin Eisa"]
 license = "MIT"
