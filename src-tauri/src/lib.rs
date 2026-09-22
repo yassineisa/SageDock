@@ -132,28 +132,39 @@ pub fn run() {
                     }
                 }
 
-                // Files dropped on the window are copied into the workspace the student is
-                // working in. Handled here rather than in the webview so the absolute paths
-                // Windows reports for a drop never reach the frontend — the same rule every
-                // other file operation in SageDock follows.
-                if let tauri::WindowEvent::DragDrop(tauri::DragDropEvent::Drop { paths, .. }) =
-                    event
-                {
-                    let paths = paths.clone();
-                    let window = window.clone();
-                    // Copying can take a while for a large dataset, and this handler runs on
-                    // the UI thread, where blocking would freeze the window mid-drop.
-                    std::thread::spawn(move || {
-                        let Some(state) = window.try_state::<AppState>() else {
-                            return;
-                        };
-                        let outcome = home::drop_files(&state, &paths);
-                        let _ = window.emit("files-dropped", outcome);
-                    });
+                // Native paths stay in Rust. Home hit-tests the final position against a
+                // workspace card before any copying starts; other pages cannot import.
+                if let tauri::WindowEvent::DragDrop(event) = event {
+                    let payload = match event {
+                        tauri::DragDropEvent::Enter { position, .. }
+                        | tauri::DragDropEvent::Over { position } => {
+                            serde_json::json!({"type": "over", "position": position})
+                        }
+                        tauri::DragDropEvent::Drop { paths, position } => {
+                            let Some(state) = window.try_state::<AppState>() else {
+                                return;
+                            };
+                            let mut bytes = [0u8; 16];
+                            if getrandom::fill(&mut bytes).is_err() {
+                                return;
+                            }
+                            let id: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+                            *state.pending_drop.lock().expect("drop mutex poisoned") =
+                                Some(home::PendingDrop {
+                                    id: id.clone(),
+                                    received: std::time::Instant::now(),
+                                    paths: paths.clone(),
+                                });
+                            serde_json::json!({"type": "drop", "position": position, "drop_id": id})
+                        }
+                        _ => serde_json::json!({"type": "leave"}),
+                    };
+                    let _ = window.emit("workspace-drag", payload);
                 }
             }
         })
         .invoke_handler(tauri::generate_handler![
+            home::add_dropped_files,
             commands::get_app_info,
             commands::open_project_page,
             commands::get_config,

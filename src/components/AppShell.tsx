@@ -14,7 +14,7 @@ import { commands, isActivePhase } from "../lib/commands";
 const SETUP_BANNER = {
   waiting_for_permission: {
     tone: "is-attention",
-    text: "Setup needs your permission — look for the Windows permission window.",
+    text: "Setup needs your permission. Look for the Windows permission window.",
   },
   waiting_for_windows: {
     tone: "is-waiting",

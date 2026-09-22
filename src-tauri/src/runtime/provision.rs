@@ -254,7 +254,7 @@ pub fn run_setup(
             on_progress(match event {
                 wsl::ElevationEvent::AwaitingConsent => SetupProgress::waiting(
                     stage,
-                    "Windows is asking for permission. Look for the permission window — it \
+                    "Windows is asking for permission. Look for the permission window. It \
                      can open behind SageDock or flash in the taskbar. Nothing continues \
                      until you answer it.",
                     true,

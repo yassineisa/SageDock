@@ -435,7 +435,7 @@ pub fn rename(store: &mut WorkspaceStore, id: &str, new_name: &str) -> AppResult
                 "workspace",
                 "WORKSPACE_RENAME_FAILED",
                 "SageDock couldn't rename that workspace",
-                "The folder couldn't be renamed. This usually means a file inside it is open in another program. Close any open notebooks and try again — nothing has been changed.",
+                "The folder couldn't be renamed. This usually means a file inside it is open in another program. Close any open notebooks and try again. Nothing has been changed.",
             )
             .with_technical_details(format!("{} -> {}: {err}", current.path.display(), target.display()))
         })?;

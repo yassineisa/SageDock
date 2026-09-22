@@ -141,7 +141,7 @@ pub fn plan_stages() -> &'static [SetupStage] {
 pub fn explain_stage(stage: SetupStage) -> &'static str {
     match stage {
         SetupStage::Preflight => {
-            "Checks this PC can run SageMath before anything is changed — Windows version, \
+            "Checks this PC can run SageMath before anything is changed: Windows version, \
              virtualisation, free space, and whether the SageMath package is readable."
         }
         SetupStage::InstallingWindowsComponents => {
@@ -158,7 +158,7 @@ pub fn explain_stage(stage: SetupStage) -> &'static str {
         }
         SetupStage::InstallingEnvironment => {
             "Unpacks SageMath, Python, and Jupyter onto this PC. This is the longest step \
-             and it does not need the internet — everything installs from the local package."
+             and it does not need the internet. Everything installs from the local package."
         }
         SetupStage::CreatingWorkspace => {
             "Creates your notebooks folder in Windows. Your work is stored here, outside \
@@ -538,7 +538,7 @@ impl SetupTracker {
                 s.title = "Setup was interrupted".into();
                 s.detail = Some(
                     "SageDock closed while it was setting up. SageMath is installed, so \
-                     choosing Continue setup picks up where it left off — nothing is \
+                     choosing Continue setup picks up where it left off. Nothing is \
                      reinstalled and your files were not affected."
                         .into(),
                 );

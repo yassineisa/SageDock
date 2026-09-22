@@ -16,6 +16,7 @@ export function WorkspaceCard({
   workspace,
   busy,
   launchDisabled = false,
+  dropping = false,
   onLaunch,
   onRename,
   onAddFiles,
@@ -26,6 +27,7 @@ export function WorkspaceCard({
   workspace: WorkspaceView;
   busy: boolean;
   launchDisabled?: boolean;
+  dropping?: boolean;
   onLaunch: () => void;
   onRename: (name: string) => void;
   onAddFiles: () => void;
@@ -45,7 +47,15 @@ export function WorkspaceCard({
   };
 
   return (
-    <article className={`workspace-card${workspace.is_active ? " is-active" : ""}`}>
+    <article
+      className={`workspace-card drop-zone${workspace.is_active ? " is-active" : ""}${dropping ? " is-dropping" : ""}`}
+      data-workspace-drop={available && !busy && !renaming ? workspace.id : undefined}
+    >
+      {dropping && (
+        <p className="drop-hint" role="status">
+          Drop to copy into {workspace.name}
+        </p>
+      )}
       <div className="ws-top">
         <span className="ws-icon">
           <Icon name="folder" size={16} />

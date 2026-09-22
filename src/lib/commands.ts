@@ -266,10 +266,7 @@ export interface DownloadTarget {
 export type DownloadConflict = "open_existing" | "replace" | "copy";
 
 /**
- * Payload of the "files-dropped" event: what a drag from Windows onto the window did.
- *
- * Emitted rather than returned because a drop has no caller. The copy happens in Rust, so
- * the dropped paths never reach the frontend — only this summary of the result does.
+ * Result of adding a native drop to a selected card. Source paths stay in Rust.
  */
 export interface FilesDropped {
   workspace: string;
@@ -279,6 +276,8 @@ export interface FilesDropped {
 }
 
 export const commands = {
+  addDroppedFiles: (dropId: string, id: string | null) =>
+    invoke<FilesDropped | null>("add_dropped_files", { dropId, id }),
   getAppInfo: () => invoke<AppInfo>("get_app_info"),
   /** Opens the project page in the default browser. The address is fixed in Rust, not here. */
   openProjectPage: () => invoke<void>("open_project_page"),

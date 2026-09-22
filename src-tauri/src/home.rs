@@ -98,7 +98,7 @@ pub fn stop_environment(state: State<'_, AppState>) -> AppResult<EnvironmentStat
             "runtime",
             "STOP_DID_NOT_TAKE_EFFECT",
             "SageMath is still running",
-            "SageDock asked the computing environment to stop, but it's still running. A calculation may still be finishing. Wait a moment and try again — your saved notebooks are safe.",
+            "SageDock asked the computing environment to stop, but it's still running. A calculation may still be finishing. Wait a moment and try again. Your saved notebooks are safe.",
         ));
     }
 
@@ -373,9 +373,14 @@ pub fn add_files_to_workspace(
     Ok(added)
 }
 
-/// What a drop onto the window did.
-///
-/// Reported as an event rather than returned, because a drop has no caller to return to.
+/// Files received from Windows, held until Home identifies the card at the drop position.
+pub struct PendingDrop {
+    pub id: String,
+    pub received: std::time::Instant,
+    pub paths: Vec<PathBuf>,
+}
+
+/// Result of copying a native drop into an explicitly selected workspace.
 #[derive(Clone, Serialize)]
 pub struct DropOutcome {
     pub workspace: String,
@@ -385,14 +390,39 @@ pub struct DropOutcome {
     pub error: Option<String>,
 }
 
-/// Copies files dropped on the window into the workspace the student is working in.
-///
-/// Called from the window event handler rather than from a command, deliberately: the
-/// absolute paths Windows reports for a drop stay in the backend and are never handed to
-/// the webview, which is the same rule every other file operation here follows.
-pub fn drop_files(state: &AppState, paths: &[PathBuf]) -> DropOutcome {
+/// Consume a native drop exactly once. An outside-card drop supplies no workspace and
+/// discards the pending paths. A delayed reply can never consume a newer drop.
+#[tauri::command(async)]
+pub fn add_dropped_files(
+    drop_id: String,
+    id: Option<String>,
+    state: State<'_, AppState>,
+) -> AppResult<Option<DropOutcome>> {
+    let paths = take_drop(
+        &mut state.pending_drop.lock().expect("drop mutex poisoned"),
+        &drop_id,
+    )?;
+    let Some(id) = id else {
+        return Ok(None);
+    };
+    Ok(Some(drop_files(&state, &id, &paths)))
+}
+
+fn take_drop(pending: &mut Option<PendingDrop>, id: &str) -> AppResult<Vec<PathBuf>> {
+    if !pending
+        .as_ref()
+        .is_some_and(|drop| drop.id == id && drop.received.elapsed().as_secs() < 30)
+    {
+        return Err(AppError::new("workspace", "DROP_EXPIRED", "Please drop the files again", "This drop is no longer available. Drop the files onto the workspace card again. Nothing was copied."));
+    }
+    Ok(pending.take().expect("validated drop").paths)
+}
+
+/// Resolve the explicit destination under the operation lock. Never fall back to the
+/// active workspace, including when a card has been removed since the native drop.
+pub fn drop_files(state: &AppState, id: &str, paths: &[PathBuf]) -> DropOutcome {
     let workspace_name = state
-        .workspaces(|store| store.active_record().map(|record| record.name.clone()))
+        .workspaces(|store| store.find(id).map(|record| record.name.clone()))
         .unwrap_or_default();
     let refused = |message: String| DropOutcome {
         workspace: workspace_name.clone(),
@@ -401,14 +431,17 @@ pub fn drop_files(state: &AppState, paths: &[PathBuf]) -> DropOutcome {
         error: Some(message),
     };
 
-    let workspace = match state.require_active_workspace() {
-        Ok(path) => path,
-        Err(err) => return refused(err.message),
-    };
     // A drop during setup or a restore must not write into a folder being rebuilt.
     let Some(_guard) = state.begin_operation(operation::WORKSPACE) else {
         return refused(busy_error(state).message);
     };
+    let Some(record) = state.workspaces(|store| store.find(id).cloned()) else {
+        return refused("That workspace is no longer available. Nothing was copied.".into());
+    };
+    if !record.path.is_dir() {
+        return refused("That workspace folder is unavailable. Nothing was copied.".into());
+    }
+    let workspace = record.path;
 
     let mut added = 0;
     let mut failed = 0;
@@ -806,6 +839,71 @@ pub fn restore_backup(app: AppHandle, state: State<'_, AppState>) -> AppResult<R
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_drop_is_single_use_and_cannot_consume_a_newer_drop() {
+        let mut pending = Some(PendingDrop {
+            id: "new".into(),
+            received: std::time::Instant::now(),
+            paths: vec![PathBuf::from("source.txt")],
+        });
+        assert!(take_drop(&mut pending, "old").is_err());
+        assert!(pending.is_some());
+        assert_eq!(
+            take_drop(&mut pending, "new").unwrap(),
+            vec![PathBuf::from("source.txt")]
+        );
+        assert!(take_drop(&mut pending, "new").is_err());
+        pending = Some(PendingDrop {
+            id: "expired".into(),
+            received: std::time::Instant::now() - std::time::Duration::from_secs(31),
+            paths: vec![],
+        });
+        assert!(take_drop(&mut pending, "expired").is_err());
+    }
+
+    #[test]
+    fn drop_uses_selected_workspace_and_preserves_active_folder_and_existing_files() {
+        let root = std::env::temp_dir().join(format!("sagedock-card-drop-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let state = AppState::new(
+            crate::config::ConfigStore::new(&root),
+            crate::state::AppPaths {
+                app_data_dir: root.clone(),
+                workspace_dir: root.join("active"),
+                package_search_dirs: vec![],
+            },
+        );
+        std::fs::create_dir_all(&state.paths.workspace_dir).unwrap();
+        let target = root.join("Physics");
+        std::fs::create_dir_all(&target).unwrap();
+        let record = state
+            .update_workspaces(|store| crate::workspaces::add_existing(store, &target))
+            .unwrap();
+        let active = state.active_workspace_dir();
+        let source = root.join("notes.txt");
+        std::fs::write(&source, "new notes").unwrap();
+        std::fs::write(target.join("notes.txt"), "existing notes").unwrap();
+        let result = drop_files(&state, &record.id, std::slice::from_ref(&source));
+        assert_eq!(result.added, 1);
+        assert_eq!(
+            std::fs::read_to_string(target.join("notes.txt")).unwrap(),
+            "existing notes"
+        );
+        assert!(!state.paths.workspace_dir.join("notes.txt").exists());
+        assert_eq!(state.active_workspace_dir(), active);
+        assert!(
+            drop_files(&state, "removed-card", std::slice::from_ref(&source))
+                .error
+                .is_some()
+        );
+        let guard = state.begin_operation(operation::SETUP).unwrap();
+        assert_eq!(
+            drop_files(&state, &record.id, std::slice::from_ref(&source)).added,
+            0
+        );
+        drop(guard);
+    }
 
     /// Workspaces must sit beside the default one, not inside it — nesting would duplicate
     /// every file in a backup and show workspaces inside each other's file browsers.

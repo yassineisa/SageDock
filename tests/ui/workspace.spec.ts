@@ -332,6 +332,7 @@ async function fixture(
           callbacks[cb]?.({ event, id: cb, payload });
         }
       };
+      (window as any).qaWorkspaceDrag = (payload: unknown) => emit("workspace-drag", payload);
 
       const remember = () => {
         try {
@@ -551,6 +552,15 @@ async function fixture(
               return workspaces.find((w) => w.id === args.id);
             }
             if (command === "add_files_to_workspace") return 2;
+            if (command === "add_dropped_files") {
+              if (!args.id) return null;
+              return {
+                workspace: args.id === "ws-2" ? "Physics" : "Calculus",
+                added: 1,
+                failed: 0,
+                error: null,
+              };
+            }
             if (command === "downloaded_notebooks") return downloads;
             if (command === "check_download_target") {
               const targetName = downloadTargetName(String(args.name));
@@ -834,6 +844,151 @@ async function fixture(
     },
   );
 }
+
+test("workspace drops target the hovered card rather than the active workspace", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto("/");
+  const physics = page.locator('[data-workspace-drop="ws-2"]');
+  await expect(physics).toBeVisible();
+  await physics.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const position = {
+      x: (rect.x + 40) * window.devicePixelRatio,
+      y: (rect.y + 40) * window.devicePixelRatio,
+    };
+    (window as any).qaWorkspaceDrag({ type: "over", position });
+  });
+  await expect(physics).toHaveClass(/is-dropping/);
+  await expect(page.locator(".workspace-card.is-dropping")).toHaveCount(1);
+  await expect(physics.getByText("Drop to copy into Physics")).toBeVisible();
+  await physics.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    (window as any).qaWorkspaceDrag({
+      type: "drop",
+      drop_id: "native-drop",
+      position: {
+        x: (rect.x + 40) * window.devicePixelRatio,
+        y: (rect.y + 40) * window.devicePixelRatio,
+      },
+    });
+  });
+  await expect(page.getByText(/1 file\(s\) copied into Physics/)).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      (window as any).qaRequests.filter((r: any) => r.command === "add_dropped_files"),
+    ),
+  ).toEqual([{ command: "add_dropped_files", args: { dropId: "native-drop", id: "ws-2" } }]);
+  await expect(page.locator(".workspace-card.is-active")).toContainText("Calculus");
+});
+
+test("drops outside cards, on missing cards, and on other pages never target the active workspace", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto("/");
+  await expect(page.locator('[data-workspace-drop="ws-1"]')).toBeVisible();
+  await page.evaluate(() =>
+    (window as any).qaWorkspaceDrag({ type: "drop", drop_id: "outside", position: { x: 1, y: 1 } }),
+  );
+  const missing = page.locator(".workspace-card", { hasText: "Old Laptop Folder" });
+  await missing.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    (window as any).qaWorkspaceDrag({
+      type: "drop",
+      drop_id: "missing",
+      position: {
+        x: (rect.x + 40) * window.devicePixelRatio,
+        y: (rect.y + 40) * window.devicePixelRatio,
+      },
+    });
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as any).qaRequests.filter((r: any) => r.command === "add_dropped_files").length,
+      ),
+    )
+    .toBe(2);
+  expect(
+    await page.evaluate(() =>
+      (window as any).qaRequests
+        .filter((r: any) => r.command === "add_dropped_files")
+        .every((r: any) => r.args.id === null),
+    ),
+  ).toBe(true);
+  await page.getByRole("link", { name: "Settings", exact: false }).click();
+  await page.evaluate(() =>
+    (window as any).qaWorkspaceDrag({
+      type: "drop",
+      drop_id: "other-page",
+      position: { x: 400, y: 400 },
+    }),
+  );
+  expect(
+    await page.evaluate(
+      () => (window as any).qaRequests.filter((r: any) => r.command === "add_dropped_files").length,
+    ),
+  ).toBe(2);
+});
+
+test.describe("scaled workspace drops", () => {
+  test.use({ deviceScaleFactor: 2 });
+  test("the final pointer position wins over the previous hover at 200 percent scale", async ({
+    page,
+  }) => {
+    await fixture(page);
+    await page.goto("/");
+    const physics = page.locator('[data-workspace-drop="ws-2"]');
+    await expect(physics).toBeVisible();
+    await physics.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      (window as any).qaWorkspaceDrag({
+        type: "over",
+        position: { x: (rect.x + 40) * devicePixelRatio, y: (rect.y + 40) * devicePixelRatio },
+      });
+    });
+    await expect(physics).toHaveClass(/is-dropping/);
+    await page.locator('[data-workspace-drop="ws-1"]').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      (window as any).qaWorkspaceDrag({
+        type: "drop",
+        drop_id: "scaled-drop",
+        position: { x: (rect.x + 40) * devicePixelRatio, y: (rect.y + 40) * devicePixelRatio },
+      });
+    });
+    await expect(page.getByText(/1 file\(s\) copied into Calculus/)).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          (window as any).qaRequests.find((r: any) => r.command === "add_dropped_files").args.id,
+      ),
+    ).toBe("ws-1");
+  });
+});
+
+test("ten logo clicks reveal the pixel chase above the sidebar note", async ({ page }) => {
+  await fixture(page);
+  await page.goto("/");
+  const logo = page.getByRole("button", { name: "SageDock logo", exact: true });
+  for (let i = 0; i < 9; i++) await logo.click();
+  const chase = page.getByRole("img", { name: "A pixel cat chasing the letter B" });
+  await expect(chase).toHaveCount(0);
+  await logo.click();
+  await expect(chase).toBeVisible();
+  const animationBox = await chase.boundingBox();
+  const noteBox = await page.getByText("Files stay in Windows", { exact: true }).boundingBox();
+  expect(animationBox!.y + animationBox!.height).toBeLessThanOrEqual(noteBox!.y);
+  await page.getByRole("link", { name: "Settings", exact: false }).click();
+  await expect(chase).toBeVisible();
+  await page.screenshot({ path: "docs/qa/pixel-chase.png", fullPage: true });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator(".pixel-chase-runner")).toHaveCSS("animation-name", "none");
+  await page.getByRole("button", { name: "Hide pixel chase" }).click();
+  await expect(chase).toHaveCount(0);
+});
 
 test("workspace, notebook creation, search, and navigation", async ({ page }) => {
   await fixture(page);

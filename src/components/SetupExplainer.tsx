@@ -55,7 +55,7 @@ export function SetupExplainer({ onClose }: { onClose: () => void }) {
         {running && (
           <p className="setup-explainer-live" role="status">
             <Icon name="play" size={14} />
-            Setup is running now — the highlighted step below is the one in progress.
+            Setup is running now. The highlighted step below is the one in progress.
           </p>
         )}
 
@@ -93,8 +93,8 @@ export function SetupExplainer({ onClose }: { onClose: () => void }) {
           and SageDock itself does not.
         </p>
         <p className="small">
-          If nothing seems to be happening after you start setup, look for that permission window —
-          it can open behind SageDock or flash in the taskbar. Setup cannot continue until you
+          If nothing seems to be happening after you start setup, look for that permission window.
+          It can open behind SageDock or flash in the taskbar. Setup cannot continue until you
           answer it.
         </p>
 
@@ -102,7 +102,7 @@ export function SetupExplainer({ onClose }: { onClose: () => void }) {
         <p>
           Windows sometimes needs to restart before a feature it just enabled will work. If that
           happens, SageDock saves its progress first and tells you. After restarting, reopen
-          SageDock and choose <strong>Continue setup</strong> — it picks up from the last finished
+          SageDock and choose <strong>Continue setup</strong>. It picks up from the last finished
           step instead of starting over.
         </p>
 

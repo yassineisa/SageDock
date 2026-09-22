@@ -144,8 +144,8 @@ export function SetupProgress({
           that made the original stall so hard to notice. */}
       {active && snapshot.heartbeat_at > snapshot.updated_at && (
         <p className="small setup-heartbeat">
-          SageDock is still connected to this task. That confirms it hasn't crashed — it isn't a
-          sign that the step is advancing.
+          SageDock is still connected to this task. That confirms it hasn't crashed. It isn't a sign
+          that the step is advancing.
         </p>
       )}
 

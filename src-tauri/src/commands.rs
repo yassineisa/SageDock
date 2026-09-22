@@ -463,7 +463,7 @@ pub fn setup_diagnostics(state: State<'_, AppState>) -> String {
     ));
     out.push_str("\nSteps\n");
     for step in &snapshot.steps {
-        out.push_str(&format!("  {:?} — {}\n", step.state, step.title));
+        out.push_str(&format!("  {:?}, {}\n", step.state, step.title));
     }
     if let Some(problem) = &snapshot.problem {
         out.push_str(&format!(

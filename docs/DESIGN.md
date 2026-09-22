@@ -72,12 +72,23 @@ that also meant "healthy" could not sit next to a warning without the colour say
 things at once. Status is **never colour alone** — every state also carries a word and an
 icon, per the accessibility requirements in `app.md` §27.
 
-**The logo carries its own two burgundy tones**, `#C0304A` and `#D96A7C`, rather than the UI
-accent. The mark is one static asset shown on both backgrounds, and `#912338` against the
-dark theme's `#1c1b1a` reaches only about 2.6:1 — below the 3:1 minimum for graphical
-objects. Both logo tones clear 3:1 against light (`#f5f4f2`) and dark (`#1c1b1a`). The
-vector source is [`src-tauri/icons/icon.svg`](../src-tauri/icons/icon.svg); it keeps the
-original geometry and changes only the palette, with no gradients or effects.
+**The logo is a filled tile, which is what resolves its contrast problem.** The mark is one
+static asset shown on both backgrounds, so a bare burgundy glyph could not work: `#912338`
+against the dark theme's `#1c1b1a` is around 2:1, well below the 3:1 minimum for graphical
+objects. Making the burgundy the _background_ of a rounded tile moves the meaningful
+contrast inside the mark, where it is controlled rather than inherited: the cream sigma
+`#FFF7EE` on burgundy `#912338` reaches about 7.9:1, and the rose binding `#E59BA8` on the
+same field about 3.8:1. Both clear their thresholds on either theme, because neither
+depends on the page behind them.
+
+The tile's own outer edge against the dark background stays near 2:1. That is accepted
+deliberately: the edge is the boundary of a filled shape, not a part of the mark a reader
+must resolve to identify it, and the sigma inside carries the meaning. It is recorded here
+so the next person does not rediscover it as a bug.
+
+The vector source is [`src-tauri/icons/icon.svg`](../src-tauri/icons/icon.svg): three flat
+fills, no gradients and no effects. See [`BRANDING.md`](BRANDING.md) for the palette and for
+how to regenerate the packaged icon set after changing it.
 
 ## Spacing and geometry
 

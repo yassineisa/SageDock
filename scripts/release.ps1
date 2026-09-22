@@ -229,9 +229,16 @@ try {
     # Every Authenticode-signable payload file, wherever it sits in the layout. The MSI
     # copy that lands beside the payload is the stub, not the signed installer, so it is
     # excluded — the real one was verified above.
-    $payload = Get-ChildItem $extract -Recurse -File -Include *.exe, *.dll |
-        Where-Object { $_.FullName -ne (Join-Path $extract $msi.Name) }
-    if (-not $payload) { Fail 'No EXE or DLL was found inside the MSI; expected at least sagedock.exe.' }
+    # @() is load-bearing, not style. This MSI ships exactly one signable PE, and a
+    # single-item Get-ChildItem result is a bare FileInfo, which has no .Count — under
+    # Set-StrictMode that threw *after* every signature had already verified, failing a
+    # perfectly good release. Forcing an array keeps both the emptiness test and the count
+    # honest however many binaries the payload grows to.
+    $payload = @(
+        Get-ChildItem $extract -Recurse -File -Include *.exe, *.dll |
+            Where-Object { $_.FullName -ne (Join-Path $extract $msi.Name) }
+    )
+    if ($payload.Count -eq 0) { Fail 'No EXE or DLL was found inside the MSI; expected at least sagedock.exe.' }
 
     foreach ($file in $payload) {
         Assert-Signed -Path $file.FullName -Label "in MSI: $($file.Name)"

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { Link } from "react-router-dom";
 import {
   commands,
@@ -67,9 +66,7 @@ export function Home() {
   // Null means SageDock has not been able to look, which is deliberately not the same fact
   // as a report saying nothing is installed.
   const [tools, setTools] = useState<ToolReport | null>(null);
-  // A drag from Windows is over the window. Only the highlight lives here — the dropped
-  // paths are handled in Rust and never reach the frontend.
-  const [dropping, setDropping] = useState(false);
+  const [dropping, setDropping] = useState<string | null>(null);
   // Renaming was refused because a notebook is open in that folder. Shown as a pop-up
   // rather than a banner: it interrupts something the user just asked for, and the reason
   // is actionable.
@@ -162,38 +159,40 @@ export function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Files dragged in from Windows.
-  //
-  // The webview event is used only to learn that a drag is over the window, so the target
-  // can be highlighted. Its payload also carries absolute paths, which are deliberately
-  // ignored: Rust handles the same drop through its own window event, does the copying,
-  // and reports back the summary below. No filesystem path reaches this file.
+  // Resolve both hover and final drop against the actual card under the pointer. Native
+  // coordinates are physical pixels; elementFromPoint uses CSS pixels (including zoom).
   useEffect(() => {
-    // `getCurrentWebview()` throws *synchronously* wherever the webview metadata isn't
-    // present, and an uncaught throw inside an effect unmounts the entire screen. Going
-    // without the drop highlight is a fair degradation; losing Home is not.
-    let stopHovering: (() => void) | undefined;
-    try {
-      void getCurrentWebview()
-        .onDragDropEvent((e) => {
-          setDropping(e.payload.type === "enter" || e.payload.type === "over");
-        })
-        .then((off) => {
-          stopHovering = off;
-        })
-        .catch(() => {});
-    } catch {
-      // No drag-and-drop feedback available here; the copy itself still works, because
-      // Rust handles the drop through the window rather than through this subscription.
-    }
-    const finished = listen<FilesDropped>("files-dropped", (e) => {
-      setDropping(false);
-      setDropped(e.payload);
-      if (e.payload.added) void refresh();
+    let disposed = false;
+    const subscription = listen<{
+      type: "over" | "drop" | "leave";
+      position?: { x: number; y: number };
+      drop_id?: string;
+    }>("workspace-drag", (e) => {
+      if (disposed) return;
+      const { type, position, drop_id } = e.payload;
+      const card = position
+        ? document
+            .elementFromPoint(
+              position.x / window.devicePixelRatio,
+              position.y / window.devicePixelRatio,
+            )
+            ?.closest<HTMLElement>("[data-workspace-drop]")
+        : null;
+      const id = card?.dataset.workspaceDrop ?? null;
+      setDropping(type === "over" ? id : null);
+      if (type === "drop" && drop_id) {
+        void task.run("Adding dropped files", async () => {
+          const outcome = await commands.addDroppedFiles(drop_id, id);
+          if (!disposed) {
+            setDropped(outcome);
+            if (outcome?.added) await refresh();
+          }
+        });
+      }
     });
     return () => {
-      stopHovering?.();
-      finished.then((f) => f()).catch(() => {});
+      disposed = true;
+      subscription.then((off) => off()).catch(() => {});
     };
   }, []);
 
@@ -750,7 +749,7 @@ export function Home() {
 
       {/* Workspaces and backups are always available, including before setup: a student
           restoring coursework onto a new PC needs them before SageMath exists. */}
-      <section aria-label="Workspaces" className={`drop-zone${dropping ? " is-dropping" : ""}`}>
+      <section aria-label="Workspaces">
         <div className="section-head" style={{ marginBottom: "var(--sp-3)" }}>
           <h2>
             Workspaces <span className="count">{workspaces.length}</span>
@@ -769,15 +768,9 @@ export function Home() {
 
         <p className="small workspace-description">
           Optional folders for your courses or projects. Put files in each folder and arrange them
-          however you like. You can also drag files here from Windows.
+          however you like. Drag files from Windows onto a workspace card to copy them into that
+          folder.
         </p>
-
-        {dropping && (
-          <p className="drop-hint">
-            <Icon name="add" size={14} />
-            Drop to copy into {workspaces.find((w) => w.is_active)?.name ?? "your workspace"}
-          </p>
-        )}
 
         {dropped && !dropping && (
           <p className="small" role="status" style={{ marginTop: "var(--sp-2)" }}>
@@ -834,6 +827,7 @@ export function Home() {
                 key={workspace.id}
                 workspace={workspace}
                 busy={busy}
+                dropping={dropping === workspace.id && !busy}
                 launchDisabled={!ready}
                 canForget={workspaces.length > 1}
                 onLaunch={() => launch(workspace)}
@@ -939,7 +933,7 @@ export function Home() {
                 type="button"
                 className="info-tip"
                 aria-label="About this list"
-                title="Your Windows Downloads folder, plus anything the built-in Sage browser downloaded — those are listed wherever you chose to save them, and each row says which folder it is in. Includes notebooks a browser saved with a .json name. Read when SageDock opens: choose Refresh after downloading something new."
+                title="Your Windows Downloads folder, plus anything the built-in Sage browser downloaded. Files are listed wherever you chose to save them, and each row says which folder it is in. Includes notebooks a browser saved with a .json name. Read when SageDock opens: choose Refresh after downloading something new."
               >
                 <Icon name="info" size={14} />
               </button>
@@ -1329,7 +1323,7 @@ export function Home() {
         >
           <p>
             <strong>{deletingDownload.name}</strong> will be moved to the Windows Recycle Bin. This
-            only removes it from Downloads — any copy already added to a workspace is unaffected.
+            only removes it from Downloads. Any copy already added to a workspace is unaffected.
           </p>
         </ConfirmDialog>
       )}

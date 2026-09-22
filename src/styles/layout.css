@@ -37,6 +37,105 @@
   height: 28px;
   object-fit: contain;
 }
+.brand-logo {
+  display: flex;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.brand-text {
+  color: inherit;
+  text-decoration: none;
+}
+.nav-bottom {
+  margin-top: auto;
+}
+.pixel-chase {
+  --chase-width: 72px;
+  position: relative;
+  height: 52px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pixel-chase-runner {
+  position: absolute;
+  bottom: 10px;
+  width: var(--chase-width);
+  animation: pixel-run 6s linear infinite;
+}
+.pixel-chase-direction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: pixel-turn 6s step-end infinite;
+}
+.pixel-cat {
+  width: 40px;
+  height: 32px;
+  color: var(--accent-text);
+}
+.pixel-letter {
+  width: 20px;
+  height: 30px;
+  color: var(--text-2);
+  animation: pixel-turn 6s step-end infinite;
+}
+.pixel-paws {
+  animation: pixel-step 0.18s steps(2, end) infinite alternate;
+}
+@keyframes pixel-run {
+  0%,
+  100% {
+    left: 0;
+  }
+  50% {
+    left: calc(100% - var(--chase-width));
+  }
+}
+@keyframes pixel-turn {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(-1);
+  }
+}
+@keyframes pixel-step {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2px);
+  }
+}
+@media (max-width: 900px) {
+  .pixel-chase {
+    --chase-width: 36px;
+  }
+  .pixel-chase-direction {
+    gap: 4px;
+  }
+  .pixel-cat {
+    width: 20px;
+    height: 16px;
+  }
+  .pixel-letter {
+    width: 12px;
+    height: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pixel-chase-runner,
+  .pixel-chase-direction,
+  .pixel-letter,
+  .pixel-paws {
+    animation: none;
+  }
+}
 .brand-name {
   font-size: 16px;
   line-height: 20px;
@@ -489,10 +588,10 @@
 }
 
 /* ============ drop target ============ */
-/* Files dragged in from Windows land in the workspace being worked in. The highlight is
-   what tells the student where the drop will go; the copy itself happens in Rust, which is
-   the only side that ever sees the dropped paths. */
+/* Each workspace card is its own target. Keep feedback out of document flow so hovering
+   does not move cards underneath the pointer. */
 .drop-zone {
+  position: relative;
   outline: 2px dashed transparent;
   outline-offset: var(--sp-2);
   border-radius: var(--radius-surface);
@@ -505,6 +604,11 @@
   background: var(--accent-subtle);
 }
 .drop-hint {
+  position: absolute;
+  inset: auto var(--sp-2) var(--sp-2);
+  padding: var(--sp-2);
+  background: var(--layer);
+  pointer-events: none;
   display: flex;
   align-items: center;
   gap: var(--sp-2);

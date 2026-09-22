@@ -34,6 +34,8 @@ pub struct AppState {
     /// choosing which workspace it belongs in. Same reasoning as `selected_backup`: the
     /// absolute path is never handed to the webview and back.
     selected_import: Mutex<Option<PathBuf>>,
+    /// One native drop awaiting a card target. Paths never originate in the webview.
+    pub pending_drop: Mutex<Option<crate::home::PendingDrop>>,
     /// The long-running operation in flight, described the way a person would say it.
     ///
     /// A plain "busy" flag was not enough: the same lock guards setup, repair, backup, and
@@ -96,6 +98,7 @@ impl AppState {
             selected_package: Mutex::new(None),
             selected_backup: Mutex::new(None),
             selected_import: Mutex::new(None),
+            pending_drop: Mutex::new(None),
             operation: Mutex::new(None),
             runtime_owned: AtomicBool::new(false),
             workspaces: Mutex::new(workspaces),
@@ -426,7 +429,7 @@ pub fn busy_error(state: &AppState) -> AppError {
         "app",
         "OPERATION_BUSY",
         "SageDock is busy for a moment",
-        format!("SageDock is still {doing}. Wait for that to finish, then try again — your saved notebooks are safe."),
+        format!("SageDock is still {doing}. Wait for that to finish, then try again. Your saved notebooks are safe."),
     )
 }
 

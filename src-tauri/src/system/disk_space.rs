@@ -71,7 +71,7 @@ fn interpret(free_bytes: Option<u64>) -> CheckItem {
             label: "Free disk space".into(),
             severity: ErrorSeverity::Error,
             summary: format!(
-                "SageDock needs more free space. Only {free_gb} GB is available — free up some space before setting up SageMath."
+                "SageDock needs more free space. Only {free_gb} GB is available. Free up some space before setting up SageMath."
             ),
             detail,
         }
