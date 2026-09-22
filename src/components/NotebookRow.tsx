@@ -3,7 +3,7 @@ import { Icon, type IconName } from "./Icon";
 
 export interface NotebookRowAction {
   key: string;
-  /** Used as both the accessible name and the native tooltip — see WorkspaceCard for the
+  /** Used as both the accessible name and the native tooltip, see WorkspaceCard for the
    * same `title`-as-tooltip convention used throughout SageDock. */
   label: string;
   icon: IconName;
@@ -19,7 +19,7 @@ export interface NotebookRowAction {
  * which point it swaps to a row of small action buttons.
  *
  * Built as a `<div>` with the open action as its own inner `<button>`, not as one big
- * button, because the action buttons are real `<button>` elements too — nesting a button
+ * button, because the action buttons are real `<button>` elements too, nesting a button
  * inside a button is invalid HTML and Chromium silently breaks it. `:focus-within` keeps the
  * actions reachable by keyboard even though they only *appear* on hover for a mouse.
  */

@@ -2,12 +2,12 @@
 //!
 //! Two independent signals are read, and the order they're combined in matters:
 //!
-//! 1. `Win32_ComputerSystem.HypervisorPresent` — a hypervisor is currently running.
-//! 2. `Win32_Processor.VirtualizationFirmwareEnabled` — firmware exposes VT-x/AMD-V.
+//! 1. `Win32_ComputerSystem.HypervisorPresent`, a hypervisor is currently running.
+//! 2. `Win32_Processor.VirtualizationFirmwareEnabled`, firmware exposes VT-x/AMD-V.
 //!
 //! Signal 1 must be checked first, because once a hypervisor (Hyper-V, and therefore
 //! WSL2 itself) is running, Windows is a guest on top of it and can no longer see the
-//! raw CPU virtualization extensions — so signal 2 starts reporting `False` on machines
+//! raw CPU virtualization extensions, so signal 2 starts reporting `False` on machines
 //! where virtualization demonstrably works. Reading only signal 2 produces a confident
 //! "virtualization is turned off" on a perfectly healthy PC, sending the user into their
 //! BIOS to fix a problem that doesn't exist. `HypervisorPresent: True` is proof that

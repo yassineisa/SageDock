@@ -1,7 +1,7 @@
 /** Small vector sprites stay crisp at Windows display scales without image downloads. */
 export function PixelChase() {
   return (
-    <div className="pixel-chase" role="img" aria-label="A pixel cat chasing the letter B">
+    <div className="pixel-chase" role="img" aria-label="A pixel cat chasing a bee">
       <div className="pixel-chase-runner">
         <div className="pixel-chase-direction">
           <svg
@@ -20,16 +20,15 @@ export function PixelChase() {
             <path d="M18 9H20V10H18Z" fill="var(--text)" />
           </svg>
           <svg
-            className="pixel-letter"
-            viewBox="0 0 8 12"
+            className="pixel-bee"
+            viewBox="0 0 12 16"
             aria-hidden="true"
             shapeRendering="crispEdges"
           >
-            <path
-              d="M1 1H5V2H6V5H5V6H6V7H7V10H6V11H1ZM3 3V5H4V3ZM3 7V9H5V7Z"
-              fill="currentColor"
-              fillRule="evenodd"
-            />
+            <path d="M3 3H5V4H6V7H3V6H2V4H3ZM7 2H9V3H10V5H9V7H6V4H7Z" fill="#8ECDE0" />
+            <path d="M3 7H10V8H11V12H10V13H3V12H2V11H0V10H2V8H3Z" fill="#352B27" />
+            <path d="M3 8H5V12H3ZM7 8H9V12H7ZM9 9H10V12H9Z" fill="#F4C34E" />
+            <path d="M10 8H11V9H10Z" fill="#FFF7EE" />
           </svg>
         </div>
       </div>

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Builds the contents of the SageDock runtime image inside a fresh Ubuntu base distro.
 #
-# Run as root by scripts/build-runtime.ps1 — never by the SageDock app, and never on an
+# Run as root by scripts/build-runtime.ps1, never by the SageDock app, and never on an
 # end user's machine. Everything slow and network-dependent about getting SageMath
 # happens here, once, with retries, so students only ever import a finished image.
 #

@@ -20,7 +20,7 @@ this codebase has already made once.
 | [TOOLS-LAUNCHER-HANDOFF.md](TOOLS-LAUNCHER-HANDOFF.md) | Compilers, the capability strip, the launcher, and icons, at 1.3.1.                                                                                                                         |
 
 These are **handoff records, not specifications**. Each was accurate when written and says
-which version it was written at. Where one contradicts the code, the code is right — but
+which version it was written at. Where one contradicts the code, the code is right, but
 read the document anyway, because it usually explains why the code is the way it is.
 
 ## What is deliberately not here

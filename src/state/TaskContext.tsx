@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useRef, type ReactNode } from "react";
 import { friendlyError } from "../lib/commands";
 type Notice = ReturnType<typeof friendlyError>;
-/** How long a success notice stays up before it clears itself. Errors are exempt — they
+/** How long a success notice stays up before it clears itself. Errors are exempt, they
  * often carry a next step (a retry button, a reason), and hiding one on a timer would take
  * that away before the student has necessarily read it. */
 const MESSAGE_LIFETIME_MS = 5000;
@@ -12,7 +12,7 @@ interface TaskState {
   dismiss: () => void;
   run: <T>(label: string, action: () => Promise<T>) => Promise<T | undefined>;
   /** Shows a success notice outside of `run`, for events SageDock observes rather than
-   * causes — such as a new file appearing in Downloads. Auto-dismisses the same way. */
+   * causes, such as a new file appearing in Downloads. Auto-dismisses the same way. */
   notify: (text: string) => void;
 }
 const Context = createContext<TaskState | null>(null);

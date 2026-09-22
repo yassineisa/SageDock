@@ -1,11 +1,11 @@
-# Setup reliability — implementation handoff
+# Setup reliability: implementation handoff
 
 Audience: the engineer auditing this change, and whoever maintains setup next. Assumes
 familiarity with the repository layout in `coding agent onboarding/REPO_CONTEXT.md`.
 
 This change makes the setup operation belong to the backend, gives it an authoritative
 queryable state, and replaces the elevation call with a supervised one. It does not claim
-setup is now reliable on hardware it has never run on — see
+setup is now reliable on hardware it has never run on, see
 [§7 What remains untested](#7-what-remains-untested-and-how-to-test-it), which is the
 section an auditor should read first.
 
@@ -17,11 +17,11 @@ Each of these was read out of the code at a specific line, not inferred from the
 Where I could not confirm something, it is in [§1.7 Hypotheses](#17-hypotheses-not-confirmed)
 instead.
 
-### 1.1 Setup state was owned by the screen that started it — confirmed
+### 1.1 Setup state was owned by the screen that started it (confirmed)
 
 `Home.tsx` held the only subscription to `setup-progress`, in an effect with `[]`
 dependencies (old line 112). React tears that down on unmount, so **every progress event
-emitted while the user was on another page was delivered to nobody and then discarded** —
+emitted while the user was on another page was delivered to nobody and then discarded**,
 there was no snapshot to recover from, because the backend published events and kept no
 state.
 
@@ -38,7 +38,7 @@ Three separate consequences, all reported as one bug:
 
 That last point is the literal mechanism behind reported problem 3.
 
-### 1.2 The elevated install emitted nothing for up to 30 minutes — confirmed
+### 1.2 The elevated install emitted nothing for up to 30 minutes (confirmed)
 
 `provision.rs` emitted one progress event before elevation ("Windows will ask for
 permission to continue"), then called `wsl::install_wsl_elevated()`, which blocked in
@@ -49,7 +49,7 @@ discarded all output (`dism … *> $null`), so there was nothing to stream even 
 For up to thirty minutes the UI's newest information was a sentence about a prompt that
 may already have been answered.
 
-### 1.3 Three different situations were indistinguishable — confirmed
+### 1.3 Three different situations were indistinguishable (confirmed)
 
 "SageDock is working", "Windows is applying changes", and "a permission prompt nobody has
 noticed" all rendered as the same indefinite spinner with the same text. This is why an
@@ -61,7 +61,7 @@ Compounding it: the outer PowerShell was launched with `CREATE_NO_WINDOW`
 open behind the app window or only flash in the taskbar, so the prompt genuinely can go
 unnoticed.
 
-### 1.4 The elevation result channel was lossy, and could report a false success — confirmed by reading
+### 1.4 The elevation result channel was lossy, and could report a false success (confirmed by reading)
 
 The only thing returned from the elevated helper was one integer, and the launcher's
 `catch` collapsed every distinct failure into `exit 1`:
@@ -83,18 +83,18 @@ I confirmed this by reading the code path, not by reproducing it. It is the stro
 correctness argument for the new result channel, and I have flagged it as read-confirmed
 rather than observed.
 
-### 1.5 The timeout killed the wrong process — confirmed
+### 1.5 The timeout killed the wrong process (confirmed)
 
-`run_hidden_timeout` on expiry does `child.kill()` — the **outer, unelevated** PowerShell.
+`run_hidden_timeout` on expiry does `child.kill()`, which is the **outer, unelevated** PowerShell.
 It cannot kill the elevated `dism` it started, and `kill()` does not touch grandchildren
 regardless. The installation continued invisibly while the app reported that the operation
 "exceeded its time limit", directly violating the standing rule that a timeout must not
 falsely report a stopped installation.
 
-### 1.6 "What happens during setup?" linked to the wrong page — confirmed
+### 1.6 "What happens during setup?" linked to the wrong page (confirmed)
 
 `Home.tsx:658` was `<Link to="/help">`, the general questions page. Besides answering a
-different question, **navigating there was itself the surest way to trigger §1.1** — the
+different question, **navigating there was itself the surest way to trigger §1.1**, the
 control most likely to be clicked by a confused user during setup was the one that
 destroyed the progress view.
 
@@ -132,7 +132,7 @@ destroyed the progress view.
 | `src/pages/Home.tsx`                 | Stops owning setup. Renders the shared progress view, opens the explainer in place, and reads busy-ness from the snapshot.                                                                                                                                                                                                |
 | `src/components/AppShell.tsx`        | App-wide setup strip with a route back to it.                                                                                                                                                                                                                                                                             |
 | `src/lib/commands.ts`                | Snapshot types and the new command bindings.                                                                                                                                                                                                                                                                              |
-| `src/styles/layout.css`              | Styles built from the existing burgundy/status tokens; no new colours. Also caps `.dialog` height and scrolls `.dialog-body` — a general fix, see §6.                                                                                                                                                                     |
+| `src/styles/layout.css`              | Styles built from the existing burgundy/status tokens; no new colours. Also caps `.dialog` height and scrolls `.dialog-body`, a general fix, see §6.                                                                                                                                                                      |
 | `tests/ui/workspace.spec.ts`         | Fixture now models the backend (snapshot + sequence + event emission, surviving reload); 13 new tests.                                                                                                                                                                                                                    |
 
 ---
@@ -201,7 +201,7 @@ The launcher no longer waits. It calls `Start-Process -Verb RunAs -PassThru`, pr
 | Completed              | Result `completed`                 | Setup continues                                            |
 | Helper vanished        | pid gone for >10 s with no result  | Error naming the pid; nothing is assumed to have succeeded |
 
-The helper writes a JSON report in a `finally` block, so every path leaves a result — a
+The helper writes a JSON report in a `finally` block, so every path leaves a result, a
 helper that dies without one is _detectable_ (the supervisor sees the process disappear)
 even though it cannot be diagnosed.
 
@@ -209,7 +209,7 @@ even though it cannot be diagnosed.
 application data directory, and a report is accepted only if its embedded `operation_id`
 matches the current run. That defends against a stale or concurrent run's result being read
 as this one's. It is **not** a defence against an attacker who can already write to the
-user's application data — such an attacker has easier targets there, and this is documented
+user's application data, such an attacker has easier targets there, and this is documented
 in the function's doc comment rather than overstated. The code the helper runs is still
 passed immutably as an `-EncodedCommand`, so no executable script is written to disk.
 
@@ -219,7 +219,7 @@ rather than the primary control, and there is a test for the injection shape.
 
 ### Timeouts
 
-- **Consent: 600 s.** Bounds "nobody answered the prompt". Reported as a warning — nothing
+- **Consent: 600 s.** Bounds "nobody answered the prompt". Reported as a warning, nothing
   was installed and nothing was left running.
 - **Helper: none.** Deliberate. The helper is supervised by liveness, not by a clock,
   because `dism` is routinely silent for minutes and a clock cannot tell that from a hang.
@@ -234,7 +234,7 @@ code's attempt to is what produced false "stopped" reports over live installatio
 On launch, `lib.rs` calls `tracker.reconcile(installed_now)`. A record whose phase is
 active and whose pid is not ours describes a crash, a forced close, or a Windows restart.
 It is reported as `Interrupted` with wording that depends on whether the runtime is
-actually installed — **the stored flag is never restored as "running", and nothing is
+actually installed, **the stored flag is never restored as "running", and nothing is
 relaunched automatically**. Each stage is already idempotent (`provision.rs` module docs),
 so "Continue setup" resumes rather than repeating finished work.
 
@@ -243,8 +243,8 @@ is refused before it can start anything; released by `ThreadOperation`'s `Drop` 
 worker exit path, and explicitly if the thread cannot be spawned at all.
 
 One honest limitation: release builds set `panic = "abort"`, so a panic in the worker ends
-the process rather than unwinding, and `Drop` does not run. That is not a stuck lock — the
-app is gone, and the next launch reconciles — but the guard's panic-safety applies only to
+the process rather than unwinding, and `Drop` does not run. That is not a stuck lock: the
+app is gone, and the next launch reconciles, but the guard's panic-safety applies only to
 debug and test builds.
 
 ---
@@ -268,7 +268,7 @@ and import. That is a real gap and it is listed in §7.
 
 ---
 
-## 6. Verification — exact commands and results
+## 6. Verification: exact commands and results
 
 Run from the repository root on 2026-09-21.
 
@@ -286,7 +286,7 @@ npm run test:ui            TEST_UI=0     69 passed
 Baseline before this change: 209 Rust tests, 55 UI tests. Net **+26 Rust, +14 UI**.
 All documentation links were re-checked and resolve.
 
-### Evidence class — read this before trusting the numbers
+### Evidence class: read this before trusting the numbers
 
 | Claim                                                                                    | Evidence                                                                                       |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -296,8 +296,8 @@ All documentation links were re-checked and resolve.
 | The elevated install actually working end to end                                         | **Not tested.** See §7.                                                                        |
 | Clean-Windows behaviour                                                                  | **Not tested.** See §7.                                                                        |
 
-The fixture was made faithful on purpose — `run_setup` returns a snapshot and never
-resolves with an outcome, and the mock refuses overlapping runs — so a passing UI test
+The fixture was made faithful on purpose: `run_setup` returns a snapshot and never
+resolves with an outcome, and the mock refuses overlapping runs, so a passing UI test
 exercises the real contract. It is still a mock.
 
 ### One assertion I had to fix, worth knowing about
@@ -316,7 +316,7 @@ Received: "Checking your PC"
 ```
 
 The guard was restored immediately. **Any future change to the sequence rule should be
-validated the same way** — this suite has now produced a vacuous assertion twice (see
+validated the same way**, this suite has now produced a vacuous assertion twice (see
 `docs/reviewer/TESTING.md` for the earlier hover-hidden-button case).
 
 ### Two defects the green suite did not catch
@@ -327,8 +327,8 @@ passed. They are recorded here because they are the argument for doing that at a
 1. **The explainer dialog grew off the top of the screen.** `.dialog` had no `max-height`,
    which had never mattered because every previous dialog was short. Mine is long, so its
    title and the whole step list were pushed above the viewport with no way to scroll back.
-   Fixed generally — `.dialog` is now a flex column capped at `calc(100vh - 48px)`, with
-   only `.dialog-body` scrolling — which also protects the restore-backup dialog when a
+   Fixed generally: `.dialog` is now a flex column capped at `calc(100vh - 48px)`, with
+   only `.dialog-body` scrolling, which also protects the restore-backup dialog when a
    backup contains many workspaces.
 2. **The "Set up SageDock" card stayed on screen beneath the live progress panel**, showing
    a disabled start button and a _second_ "What happens during setup?" next to the one in
@@ -337,8 +337,8 @@ passed. They are recorded here because they are the argument for doing that at a
    button is wanted again.
 
 Fixing (2) broke `clicking Set up twice does not start two installations`, which asserted
-the button was _disabled_. Rather than relax it to "the button is gone" — which would have
-proved much less — it now also invokes `run_setup` directly, behind the UI, and requires
+the button was _disabled_. Rather than relax it to "the button is gone", which would have
+proved much less, it now also invokes `run_setup` directly, behind the UI, and requires
 the backend's operation lock to refuse it with `APP_BUSY`. A tidy UI is not the protection;
 the lock is.
 
@@ -393,7 +393,7 @@ An already-configured WSL machine proves nothing here.
 ### 7.4 A re-check gap I introduced no fix for
 
 Between elevation completing and the runtime import, setup re-tests `wsl::is_available()`
-and `vm_platform_present()` but does not re-run full preflight — so, for example, disk
+and `vm_platform_present()` but does not re-run full preflight, so, for example, disk
 space consumed by another process during a long elevation is not noticed until import
 fails. Pre-existing behaviour, not a regression, but it is the kind of thing this work was
 meant to surface.
@@ -408,8 +408,8 @@ meant to surface.
 - **The 500 ms supervisor poll calls `tasklist.exe`.** That is a process spawn twice a
   second for the duration of a Windows feature install. It is cheap relative to `dism`, but
   a native `OpenProcess` check would be cheaper and is the obvious follow-up.
-- **`process_is_running` returns `true` when it cannot ask.** Deliberate — being unable to
-  query is not evidence of death, and the patient direction is the safe one — but it does
+- **`process_is_running` returns `true` when it cannot ask.** Deliberate: being unable to
+  query is not evidence of death, and the patient direction is the safe one, but it does
   mean a broken `tasklist` turns the supervisor into an unbounded wait.
 - **Redaction is a blunt filter over text SageDock writes**, not a general sanitiser. It
   drops whole lines naming a token and rewrites `\Users\<name>`. It is not relied upon to

@@ -24,7 +24,7 @@
     See build/signing/README.md.
 
 .PARAMETER SkipTests
-    Skip the validation gate. For iterating on the signing step only — never for a
+    Skip the validation gate. For iterating on the signing step only, never for a
     release that will actually be published.
 #>
 [CmdletBinding()]
@@ -214,7 +214,7 @@ Assert-Signed -Path $msi.FullName -Label $msi.Name
 #
 # NOT src-tauri\target\release\sagedock.exe. Tauri patches the linked executable with
 # bundle metadata, signs the patched copy, harvests that into the MSI, and then restores
-# the original bytes on disk — so the file left in target\release is unpatched, unsigned,
+# the original bytes on disk, so the file left in target\release is unpatched, unsigned,
 # and is not what anybody installs. Verifying it reports "No signature found" on a release
 # whose payload is correctly signed, and, far worse, verifying it *successfully* would
 # prove nothing about the installer. The shipped copy is the only honest subject.
@@ -228,9 +228,9 @@ try {
 
     # Every Authenticode-signable payload file, wherever it sits in the layout. The MSI
     # copy that lands beside the payload is the stub, not the signed installer, so it is
-    # excluded — the real one was verified above.
+    # excluded, the real one was verified above.
     # @() is load-bearing, not style. This MSI ships exactly one signable PE, and a
-    # single-item Get-ChildItem result is a bare FileInfo, which has no .Count — under
+    # single-item Get-ChildItem result is a bare FileInfo, which has no .Count, under
     # Set-StrictMode that threw *after* every signature had already verified, failing a
     # perfectly good release. Forcing an array keeps both the emptiness test and the count
     # honest however many binaries the payload grows to.

@@ -1,4 +1,4 @@
-# DataLab for Windows — Product & Infrastructure Specification
+# DataLab for Windows, Product & Infrastructure Specification
 
 ## 1. Product Vision
 
@@ -250,7 +250,7 @@ The user should never need to see or enter a URL, port number, or Jupyter token.
 
 The first launch should feel like setting up a consumer app.
 
-### Screen 1 — Welcome
+### Screen 1, Welcome
 
 Example:
 
@@ -650,7 +650,7 @@ Advanced users may still use the terminal, but beginners should not need it.
 
 ---
 
-# 13. JupyterLab Integration — Phase 1
+# 13. JupyterLab Integration, Phase 1
 
 The first production version should use JupyterLab rather than reimplement notebook functionality.
 
@@ -676,7 +676,7 @@ JupyterLab remains responsible for:
 
 ---
 
-# 14. Custom Notebook UI — Future Architecture
+# 14. Custom Notebook UI, Future Architecture
 
 DataLab should be designed so JupyterLab is a replaceable front end, not the foundation of the whole product.
 
@@ -1211,7 +1211,7 @@ Help
 
 # 30. MVP Deliverables
 
-## Phase 1 — Functional Prototype
+## Phase 1, Functional Prototype
 
 Deliverables:
 
@@ -1231,7 +1231,7 @@ Deliverables:
 
 ---
 
-## Phase 2 — Polished Student Release
+## Phase 2, Polished Student Release
 
 Deliverables:
 
@@ -1254,7 +1254,7 @@ Deliverables:
 
 ---
 
-## Phase 3 — Premium UX Layer
+## Phase 3, Premium UX Layer
 
 Deliverables:
 
@@ -1271,7 +1271,7 @@ Deliverables:
 
 ---
 
-## Phase 4 — First-Party Notebook UI
+## Phase 4, First-Party Notebook UI
 
 Deliverables:
 
@@ -1339,6 +1339,6 @@ DataLab should feel like this:
 
 > Install one Windows app. Open it. Choose SageMath or Python. Start working.
 
-Everything else — Linux, WSL, Jupyter servers, compilers, ports, package managers, kernels, configuration files, and recovery commands — is infrastructure DataLab manages on the user's behalf.
+Everything else, Linux, WSL, Jupyter servers, compilers, ports, package managers, kernels, configuration files, and recovery commands, is infrastructure DataLab manages on the user's behalf.
 
 The long-term ambition is not merely to hide Linux. It is to provide a scientific computing environment that feels designed for students first, with enough maturity underneath to remain useful as those students become more advanced.

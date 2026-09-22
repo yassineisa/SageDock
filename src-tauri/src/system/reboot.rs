@@ -215,7 +215,7 @@ mod tests {
         assert!(check.summary.contains("does not stop SageDock"));
     }
 
-    /// A machine with no WSL yet is not "blocked by a restart" — setup installs WSL. The
+    /// A machine with no WSL yet is not "blocked by a restart", setup installs WSL. The
     /// old logic would warn here purely because some installer had queued a file rename.
     #[test]
     fn a_machine_without_wsl_is_not_reported_as_needing_a_restart() {

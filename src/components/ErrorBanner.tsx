@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Icon } from "./Icon";
 
 /**
- * A friendly title and explanation, with technical detail behind an explicit toggle —
+ * A friendly title and explanation, with technical detail behind an explicit toggle,
  * the product's progressive-disclosure rule in component form.
  *
  * Styling lives entirely in `layout.css`. An earlier version carried inline styles that

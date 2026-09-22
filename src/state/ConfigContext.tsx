@@ -26,7 +26,7 @@ const SETTINGS_GRACE_MS = 1500;
  * What to use when settings cannot be read, or do not arrive in time.
  *
  * `onboarding_complete` is deliberately `true`. In this state settings are not writable, so
- * finishing the introduction could not be recorded and it would return on every launch — a
+ * finishing the introduction could not be recorded and it would return on every launch, a
  * first-run screen nobody can get past is worse than not showing one.
  */
 const FALLBACK_CONFIG: AppConfig = {

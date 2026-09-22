@@ -22,7 +22,7 @@ The file is committed deliberately: it is build configuration a reviewer should 
 read, and keeping it in the tree means a release cannot be signed under a different
 identity without that change showing up in a diff.
 
-The schema is fixed by `Azure.CodeSigning.Dlib.dll`, which rejects unknown keys — so the
+The schema is fixed by `Azure.CodeSigning.Dlib.dll`, which rejects unknown keys, so the
 explanation lives in this file rather than as comments inside the JSON.
 
 ## Where the signing key is
@@ -36,7 +36,7 @@ used as one here.
 ## How authentication works
 
 `Azure.CodeSigning.Dlib.dll` authenticates with `DefaultAzureCredential`, which at signing
-time picks up whatever Azure identity is already available on the machine — for a local
+time picks up whatever Azure identity is already available on the machine, for a local
 release, the developer's existing `az login` session.
 
 Consequently the build:
@@ -63,9 +63,9 @@ killed. With the exclusions below in place the same file signed in **4.2 seconds
 
 So the list is a real fix, not tidying. It also serves a second purpose:
 `InteractiveBrowserCredential` is excluded so a release build can never silently turn into
-a password prompt — it either uses the existing CLI session or it fails.
+a password prompt, it either uses the existing CLI session or it fails.
 
-If a CI pipeline ever signs these artifacts, it will need a different list — typically
+If a CI pipeline ever signs these artifacts, it will need a different list, typically
 excluding nothing, so `EnvironmentCredential` or a workload identity can be picked up.
 
 ## Local-only build inputs

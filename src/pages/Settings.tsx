@@ -16,7 +16,7 @@ export function Settings() {
 
   // Only read the registry when the choice is actually on screen. Failing to list browsers
   // leaves the picker showing "Your default browser" alone, which is the behaviour SageDock
-  // had before this setting existed — not an error worth interrupting Settings for.
+  // had before this setting existed, not an error worth interrupting Settings for.
   const usingBrowser = !!config?.open_in_browser;
   useEffect(() => {
     if (!usingBrowser) return;

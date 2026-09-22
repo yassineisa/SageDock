@@ -1,6 +1,6 @@
 # Third-party notices
 
-The MIT license in [`LICENSE`](LICENSE) covers SageDock's own source code — the Windows
+The MIT license in [`LICENSE`](LICENSE) covers SageDock's own source code: the Windows
 desktop application in `src/` and `src-tauri/`, its build scripts, and its documentation.
 
 It does **not** cover the third-party software SageDock installs, bundles, or depends on.

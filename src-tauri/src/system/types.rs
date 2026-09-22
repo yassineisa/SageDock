@@ -19,17 +19,17 @@ pub enum HealthState {
 }
 
 /// One diagnostic finding. A flat list of these (rather than a rigid struct with one
-/// field per check) is what the frontend renders — new checks in later milestones are
+/// field per check) is what the frontend renders, new checks in later milestones are
 /// additive without changing the wire shape.
 #[derive(Debug, Clone, Serialize)]
 pub struct CheckItem {
-    /// Stable id, e.g. "windows_version" — used by rollup logic and tests, never shown to the user.
+    /// Stable id, e.g. "windows_version", used by rollup logic and tests, never shown to the user.
     pub id: &'static str,
     pub label: String,
     pub severity: ErrorSeverity,
     /// Plain-language summary, always shown.
     pub summary: String,
-    /// Technical detail for an optional "Show details" disclosure — raw registry values,
+    /// Technical detail for an optional "Show details" disclosure, raw registry values,
     /// command output, etc. Never the basis for a pass/fail decision, only for troubleshooting.
     pub detail: Option<String>,
 }
@@ -56,7 +56,7 @@ impl SystemCheckResult {
 /// Rolls per-check severities up into one overall state. Two checks get special-cased
 /// by id because their meaning is more specific than a generic severity: an unsupported
 /// Windows version blocks everything, and a pending reboot should be resolved before
-/// anything else is attempted, but neither is simply "worse" than a plain error — the
+/// anything else is attempted, but neither is simply "worse" than a plain error, the
 /// user's next step is different (update Windows vs. restart vs. something SageDock can
 /// retry). Everything else falls back to severity: any `Error`/`Fatal` makes the shell
 /// usable but unable to proceed with setup, otherwise the machine looks ready.
@@ -65,8 +65,8 @@ impl SystemCheckResult {
 /// `system::reboot` only raises that check above `Info` when a restart genuinely blocks
 /// setup. An advisory pending Windows update, or a file rename some other installer
 /// scheduled, arrives here as `Info` and leaves the overall state alone. Before that
-/// distinction existed, any one of three registry flags — one of which is set routinely by
-/// ordinary software updates — forced the whole machine to `RestartRequired`.
+/// distinction existed, any one of three registry flags, one of which is set routinely by
+/// ordinary software updates, forced the whole machine to `RestartRequired`.
 fn compute_overall(checks: &[CheckItem]) -> HealthState {
     let find = |id: &str| checks.iter().find(|c| c.id == id);
 

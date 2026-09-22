@@ -8,7 +8,7 @@
 //! - Output decoding that doesn't assume a codepage. Windows console tools are
 //!   inconsistent about whether piped output comes back as UTF-16LE or the system's
 //!   ANSI codepage; guessing wrong turns readable text into mojibake in the "Show
-//!   details" panel. This only affects human-readable debug text — no decision in this
+//!   details" panel. This only affects human-readable debug text, no decision in this
 //!   codebase parses that text to make a choice (see the module docs in `wsl.rs`).
 
 use std::io::Read;
@@ -27,7 +27,7 @@ pub struct ProcessResult {
 }
 
 /// Runs `program` with `args`, hidden, and returns its exit status plus best-effort
-/// decoded output. Returns `Ok(None)` if the program itself couldn't be found/started —
+/// decoded output. Returns `Ok(None)` if the program itself couldn't be found/started,
 /// callers treat that the same as "not available" rather than an internal error.
 pub fn run_hidden(program: &str, args: &[&str]) -> std::io::Result<Option<ProcessResult>> {
     run_hidden_timeout(program, args, Duration::from_secs(45))

@@ -2,7 +2,7 @@
 //! whether a SageDock-managed distro is already registered.
 //!
 //! `wsl.exe` has no machine-readable (`--json`) output mode, and its human-readable
-//! text is localized, so none of these checks parse its stdout to decide anything —
+//! text is localized, so none of these checks parse its stdout to decide anything,
 //! only the process exit code is used for `wsl_available`. The version and distro
 //! checks instead read the registry directly under
 //! `HKCU\Software\Microsoft\Windows\CurrentVersion\Lxss`, where WSL stores per-distro

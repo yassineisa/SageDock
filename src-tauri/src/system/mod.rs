@@ -1,7 +1,7 @@
 //! System diagnostics: read-only checks of Windows/WSL state, reported as structured
 //! results instead of raw command output. Each check lives in its own module, split
 //! into an untested "gather" step (the actual registry/WMI/process call) and a unit
-//! tested "interpret" step (pure logic turning raw data into a `CheckItem`) — see the
+//! tested "interpret" step (pure logic turning raw data into a `CheckItem`), see the
 //! testing philosophy note in each file.
 //!
 //! These checks are read-only. The runtime module owns installation and recovery.
@@ -50,7 +50,7 @@ pub fn boot_started_at() -> Option<u64> {
 /// restart decision unit-testable.
 ///
 /// Checks that shell out (virtualization, WSL availability, the virtual machine platform)
-/// make this call take on the order of a few hundred milliseconds to a couple of seconds —
+/// make this call take on the order of a few hundred milliseconds to a couple of seconds,
 /// fine for an explicit "Run diagnostic" action, but not something to run unprompted on
 /// every app launch.
 pub fn run_system_check(setup_awaiting_restart: bool) -> SystemCheckResult {
@@ -83,7 +83,7 @@ mod tests {
     /// Exercises the real registry/WMI/`wsl.exe` calls against whatever machine `cargo
     /// test` runs on, rather than the mocked `interpret_*` unit tests elsewhere in this
     /// module tree. Ignored by default since its result is environment-dependent (and,
-    /// unlike the rest of the suite, genuinely touches the OS) — run explicitly with:
+    /// unlike the rest of the suite, genuinely touches the OS), run explicitly with:
     ///   cargo test -p sagedock system::tests::smoke_check_runs_against_this_machine -- --ignored --nocapture
     #[test]
     #[ignore]

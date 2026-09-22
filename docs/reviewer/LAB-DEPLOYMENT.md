@@ -13,7 +13,7 @@ it will cost them. Every fact about the installer below was read out of the MSI 
 | Manufacturer          | `Yassin Eisa`                                                          |
 | ProductCode           | `{BF9DF498-1798-458C-9099-A75CA4E47CC0}`                               |
 | UpgradeCode           | `{B05BF660-072E-5795-9B7F-9C42C518C5E8}`                               |
-| Scope                 | `ALLUSERS=1` — **per-machine, requires administrator**                 |
+| Scope                 | `ALLUSERS=1`, **per-machine, requires administrator**                  |
 | Install location      | `ProgramFiles64Folder\SageDock`                                        |
 | Bundle type           | WiX MSI only (`bundle.targets` is `["msi"]`); there is no NSIS or MSIX |
 | Code signing          | **None.** Expect SmartScreen.                                          |
@@ -41,7 +41,7 @@ SageMath runtime image, which is staged there as a resource and imported into WS
 ### Shortcuts and Add/Remove Programs
 
 - Start Menu: `SageDock`
-- **Desktop: `SageDock`** — worth knowing if your image policy forbids desktop shortcuts.
+- **Desktop: `SageDock`**, worth knowing if your image policy forbids desktop shortcuts.
 - `Uninstall SageDock` inside the install directory.
 - `ARPNOMODIFY` is set, so Add/Remove Programs offers no "Modify" button.
 

@@ -1,6 +1,6 @@
 [package]
 name = "sagedock"
-version = "1.4.5"
+version = "1.4.6"
 description = "SageDock desktop shell"
 authors = ["Yassin Eisa"]
 license = "MIT"
@@ -54,7 +54,7 @@ trash = "5"
 # WebView2 delivers the download event on the UI thread, where the plugin's `blocking_*`
 # pickers deadlock the event loop by its own documentation, while its callback form answers
 # after the handler has already had to return a destination. `rfd`'s synchronous dialog is
-# what the plugin itself wraps, so this adds no new transitive dependency — the version and
+# what the plugin itself wraps, so this adds no new transitive dependency, the version and
 # features below are copied from the plugin's own manifest so the two cannot disagree.
 rfd = { version = "0.16", default-features = false, features = ["common-controls-v6"] }
 

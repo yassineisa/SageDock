@@ -36,7 +36,7 @@ use crate::runtime::provision::{SetupOutcome, SetupStage};
 const OPERATION_FILE: &str = "setup-operation.json";
 
 /// How many log lines the technical view retains. Enough to cover a whole setup run
-/// without letting a chatty stage grow the snapshot without bound — the snapshot is cloned
+/// without letting a chatty stage grow the snapshot without bound, the snapshot is cloned
 /// on every query and serialised on every event.
 const MAX_LOG_LINES: usize = 500;
 
@@ -72,7 +72,7 @@ pub enum SetupPhase {
     Completed,
     /// Setup stopped on an error. `problem` explains it and what to do.
     Failed,
-    /// A previous run never recorded an ending — the app closed, crashed, or Windows
+    /// A previous run never recorded an ending, the app closed, crashed, or Windows
     /// restarted mid-operation. Needs reconciling against what is actually installed
     /// before anything is retried.
     Interrupted,
@@ -107,7 +107,7 @@ pub enum StepState {
     Pending,
     Active,
     Done,
-    /// Not needed on this PC — the usual case being Windows components that are already on.
+    /// Not needed on this PC, the usual case being Windows components that are already on.
     Skipped,
     Failed,
 }
@@ -173,7 +173,7 @@ pub fn explain_stage(stage: SetupStage) -> &'static str {
 }
 
 /// A line for the expandable technical view. Free of paths under the user's profile and of
-/// anything resembling a token — see `redact` below.
+/// anything resembling a token, see `redact` below.
 #[derive(Debug, Clone, Serialize)]
 pub struct LogLine {
     pub at: u64,
@@ -382,7 +382,7 @@ impl SetupTracker {
         self.persist(SetupPhase::Running, Some(stage), &id, at);
     }
 
-    /// Switches the phase without changing the stage — used when the app starts waiting on
+    /// Switches the phase without changing the stage, used when the app starts waiting on
     /// somebody else, so the UI can say who.
     pub fn set_phase(&self, sink: Option<&dyn ProgressSink>, phase: SetupPhase, detail: &str) {
         let at = now_ms();
@@ -510,7 +510,7 @@ impl SetupTracker {
     ///
     /// The stored phase is never trusted on its own. A record saying "running" written by a
     /// process that no longer exists describes a crash, not an installation in flight, and
-    /// restoring it as running would leave the app busy forever — the exact failure this
+    /// restoring it as running would leave the app busy forever, the exact failure this
     /// module was written to remove. `installed_now` supplies the ground truth the caller
     /// has already established by looking at the machine.
     pub fn reconcile(&self, sink: Option<&dyn ProgressSink>, installed_now: bool) {
@@ -580,7 +580,7 @@ impl SetupTracker {
 }
 
 /// An operation identifier. Random enough to distinguish runs within a session and across
-/// restarts, which is all it is relied upon for — it is not a security token, and nothing
+/// restarts, which is all it is relied upon for, it is not a security token, and nothing
 /// grants access on the strength of holding one.
 fn new_operation_id() -> String {
     use std::hash::{BuildHasher, Hasher, RandomState};
@@ -596,7 +596,7 @@ fn new_operation_id() -> String {
 ///
 /// This is a deliberately blunt filter over text SageDock itself writes. It is not a
 /// general-purpose sanitiser for arbitrary third-party output, and it is not relied on to
-/// make untrusted content safe — it reduces avoidable personal detail in a file the user is
+/// make untrusted content safe, it reduces avoidable personal detail in a file the user is
 /// invited to send to somebody else.
 pub fn redact(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
@@ -648,8 +648,8 @@ fn redact_user_path(line: &str) -> String {
 
 /// Whether a process with this id is currently running.
 ///
-/// Used to tell a crashed operation from a live one, and — more importantly during
-/// elevation — to tell a genuinely hung helper from one that is simply quiet. Quiet output
+/// Used to tell a crashed operation from a live one, and, more importantly during
+/// elevation, to tell a genuinely hung helper from one that is simply quiet. Quiet output
 /// is not evidence of a hang: `dism` can spend many minutes saying nothing at all.
 #[cfg(windows)]
 pub fn process_is_running(pid: u32) -> bool {
@@ -880,8 +880,8 @@ mod tests {
         }
         let snapshot = tracker.snapshot();
         assert_eq!(snapshot.log.len(), MAX_LOG_LINES);
-        // The cap drops the oldest lines, so the most recent — the ones that explain how a
-        // run ended — are the ones kept.
+        // The cap drops the oldest lines, so the most recent, the ones that explain how a
+        // run ended, are the ones kept.
         assert!(snapshot
             .log
             .last()

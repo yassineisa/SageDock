@@ -274,7 +274,7 @@ impl AppState {
 
     /// Mutates the workspace list and persists it, keeping disk and memory in agreement.
     ///
-    /// The change is only kept if the save succeeds — otherwise the in-memory list is
+    /// The change is only kept if the save succeeds, otherwise the in-memory list is
     /// rolled back, so what the user sees always matches what will be there next launch.
     pub fn update_workspaces<T>(
         &self,
@@ -329,7 +329,7 @@ impl AppState {
     /// An authenticated session rooted at `root`, starting a server if one isn't running.
     ///
     /// Servers are matched by folder, so returning to a workspace reuses its existing
-    /// session — including any kernels still computing in it.
+    /// session, including any kernels still computing in it.
     pub fn session_for(&self, root: &Path) -> AppResult<JupyterSession> {
         let mut guard = self.jupyter.lock().expect("jupyter mutex poisoned");
 
@@ -375,7 +375,7 @@ impl AppState {
     /// Whether a notebook server is rooted at this folder, or anywhere inside it.
     ///
     /// Scoped deliberately. Renaming a workspace moves its folder on disk, which would
-    /// strand a server rooted there — but only *that* folder's server. Asking instead
+    /// strand a server rooted there, but only *that* folder's server. Asking instead
     /// whether any server is running at all refused every rename the moment a single
     /// notebook was open anywhere, including one in an unrelated course. That is not a
     /// safety property, just a false one, and it is what made renaming appear broken.
@@ -465,7 +465,7 @@ mod tests {
         )
     }
 
-    /// An instance that never started the environment must leave it alone — this is what
+    /// An instance that never started the environment must leave it alone, this is what
     /// stops a second window's exit from killing the first window's notebooks.
     #[test]
     fn an_instance_that_did_not_start_the_runtime_may_not_stop_it() {

@@ -11,7 +11,7 @@ use std::{
 #[derive(Serialize)]
 pub struct NotebookEntry {
     /// How the frontend refers to this file. A workspace-relative path, a bare name in the
-    /// Downloads folder, or an opaque `tracked:` key — never an absolute path.
+    /// Downloads folder, or an opaque `tracked:` key, never an absolute path.
     pub path: String,
     pub name: String,
     pub modified: u64,
@@ -190,7 +190,7 @@ pub fn import(root: &Path, source: &Path) -> AppResult<String> {
 }
 
 /// Sends a file to the Recycle Bin rather than deleting it outright, so a mistaken click
-/// doesn't cost real work — the same safety margin Windows' own Explorer gives.
+/// doesn't cost real work, the same safety margin Windows' own Explorer gives.
 pub fn move_to_recycle_bin(path: &Path) -> AppResult<()> {
     trash::delete(path).map_err(|e| failure(e.to_string()))
 }
@@ -199,7 +199,7 @@ pub fn move_to_recycle_bin(path: &Path) -> AppResult<()> {
 /// name.
 ///
 /// Used only after the student has been shown what is already there and chosen to replace it
-/// explicitly — nothing in SageDock overwrites a file the quiet way otherwise. The write is
+/// explicitly, nothing in SageDock overwrites a file the quiet way otherwise. The write is
 /// atomic, so a failure partway through cannot leave a half-written file in place of either
 /// version.
 pub fn import_replacing(root: &Path, source: &Path) -> AppResult<String> {
@@ -216,8 +216,8 @@ pub fn import_replacing(root: &Path, source: &Path) -> AppResult<String> {
     Ok(target)
 }
 
-/// Copies a file the user explicitly chose — in a native picker, or by dropping it on the
-/// window — into a workspace folder, never overwriting anything already there.
+/// Copies a file the user explicitly chose, in a native picker, or by dropping it on the
+/// window, into a workspace folder, never overwriting anything already there.
 ///
 /// Deliberately not restricted to notebooks. Coursework is datasets, images and PDFs as well
 /// as `.ipynb` files, and a folder the student can already open in File Explorer gains
@@ -283,7 +283,7 @@ pub fn add_file(root: &Path, source: &Path) -> AppResult<String> {
 ///
 /// Shallow by design: Downloads is often enormous, and a deep walk on every Home render
 /// would cost far more than the feature is worth. `path` carries the bare file name rather
-/// than a full path, so no absolute path ever reaches the webview — `downloaded_file`
+/// than a full path, so no absolute path ever reaches the webview, `downloaded_file`
 /// resolves it back here.
 pub fn downloaded(dir: &Path, tracked: &[PathBuf]) -> AppResult<Vec<NotebookEntry>> {
     let mut entries = Vec::new();
@@ -328,7 +328,7 @@ pub fn downloaded(dir: &Path, tracked: &[PathBuf]) -> AppResult<Vec<NotebookEntr
         if name.starts_with('.') {
             continue;
         }
-        // A Downloads folder is full of unrelated JSON — settings, API dumps, exports —
+        // A Downloads folder is full of unrelated JSON, settings, API dumps, exports,
         // and listing those as notebooks would be noise. Only the head of the file is
         // read, because this runs on every Home render and some JSON is enormous.
         if extension == "json" {
@@ -364,7 +364,7 @@ pub fn downloaded(dir: &Path, tracked: &[PathBuf]) -> AppResult<Vec<NotebookEntr
     }
 
     // Downloads the built-in browser made, wherever they were saved. These are recorded
-    // rather than discovered — see `downloads.rs` — so they are listed whatever their file
+    // rather than discovered, see `downloads.rs`, so they are listed whatever their file
     // type, while the folder scan above stays notebooks-only.
     let downloads_root = dir.canonicalize().ok();
     for path in tracked {
@@ -541,7 +541,7 @@ mod tests {
     }
 
     /// Dropping or picking a file must never replace work already in the folder, and must
-    /// not be limited to notebooks — coursework is datasets and images too.
+    /// not be limited to notebooks, coursework is datasets and images too.
     #[test]
     fn added_files_keep_any_type_and_never_overwrite() {
         let root = std::env::temp_dir().join(format!("sagedock-addfile-{}", std::process::id()));

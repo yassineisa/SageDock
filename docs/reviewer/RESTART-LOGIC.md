@@ -98,7 +98,7 @@ why `restart_blocks_setup` reduces to `setup_awaiting_restart` alone.
 
 **2. A saved flag survives a reboot forever.** `PersistedSetupState.awaiting_restart` is
 written to disk. Once set, it stayed set, so restarting the computer did not clear the
-warning — the exact symptom the user reported, reintroduced by the fix's own state.
+warning, the exact symptom the user reported, reintroduced by the fix's own state.
 
 The remedy is in
 [`runtime/provision.rs`](../../src-tauri/src/runtime/provision.rs):

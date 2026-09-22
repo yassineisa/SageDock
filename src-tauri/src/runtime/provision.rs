@@ -44,9 +44,9 @@ impl SetupStage {
 
 /// What a progress report means, beyond which stage it belongs to.
 ///
-/// The distinction exists because three things that look identical from outside — the app
+/// The distinction exists because three things that look identical from outside, the app
 /// working, the user not having answered a permission prompt, and Windows grinding away
-/// invisibly — need completely different words on screen and completely different advice
+/// invisibly, need completely different words on screen and completely different advice
 /// when they run long.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -67,7 +67,7 @@ pub struct SetupProgress {
     pub title: String,
     pub detail: Option<String>,
     /// 0.0–1.0 within the current stage, when the stage can measure itself. `None` means
-    /// the stage genuinely cannot measure itself — never a fabricated number to keep a bar
+    /// the stage genuinely cannot measure itself, never a fabricated number to keep a bar
     /// moving.
     pub percent: Option<f32>,
     pub kind: ProgressKind,
@@ -247,7 +247,7 @@ pub fn run_setup(
 
         // The supervisor reports who it is waiting on, and beats while the helper works.
         // Both are forwarded so the UI can distinguish "answer the prompt" from "Windows is
-        // busy" — the two situations that previously looked identical and together produced
+        // busy", the two situations that previously looked identical and together produced
         // the reported stall.
         let mut on_event = |event: wsl::ElevationEvent| {
             let stage = SetupStage::InstallingWindowsComponents;
@@ -304,8 +304,8 @@ pub fn run_setup(
         //
         // Windows' registry restart flags are deliberately no longer consulted here. They
         // include `PendingFileRenameOperations`, which any installer can set for an unrelated
-        // reason — an OEM updater had set it on the development machine, with 26 entries and
-        // no Windows update pending at all — and trusting it sent healthy setups into a
+        // reason, an OEM updater had set it on the development machine, with 26 entries and
+        // no Windows update pending at all, and trusting it sent healthy setups into a
         // restart they did not need. See `system::reboot` for the full reasoning.
         if !(wsl::is_available() && wsl::vm_platform_present()) && !resumed_after_restart {
             state.request_restart();
@@ -346,7 +346,7 @@ pub fn run_setup(
         match install_from_package(paths, package, &mut state, on_progress) {
             Ok(()) => {}
             // The install reached Windows' virtual machine platform and found it dormant.
-            // That is a restart, not a bad package — but only once: if a restart has
+            // That is a restart, not a bad package, but only once: if a restart has
             // already been tried, the honest answer is the underlying failure.
             Err(err) if err.code == wsl::RESTART_REQUIRED_CODE && !resumed_after_restart => {
                 state.request_restart();
@@ -424,7 +424,7 @@ fn install_from_package(
     )?;
 
     // A failure from here on is about the file, not the PC. The distro was created moments
-    // ago by the import above, so removing it discards nothing except the bad import —
+    // ago by the import above, so removing it discards nothing except the bad import,
     // user files live on the Windows side and are never inside it.
     let info = match read_runtime_info() {
         Ok(info) => info,
@@ -446,7 +446,7 @@ struct RuntimeInfo {
     sage_version: String,
 }
 
-/// Reads the image's self-description and confirms its Jupyter launcher is present — the
+/// Reads the image's self-description and confirms its Jupyter launcher is present, the
 /// minimum contract (see `contract`) that separates a SageDock image from an arbitrary
 /// Linux archive.
 fn read_runtime_info() -> AppResult<RuntimeInfo> {

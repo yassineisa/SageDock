@@ -109,7 +109,7 @@ pub fn run() {
             // Decide what a previous run's record means before any screen can ask.
             //
             // A record saying "running" was written by a process that is no longer here, so
-            // it describes a crash, a forced close, or a Windows restart — never work still
+            // it describes a crash, a forced close, or a Windows restart, never work still
             // in flight. It is reconciled against what is actually installed rather than
             // restored as a busy flag, which is what used to strand the app mid-setup, and
             // nothing is relaunched on its behalf: the user is told and offered the choice.
@@ -221,7 +221,7 @@ pub fn run() {
         .expect("error while running tauri application")
         .run(|app, event| {
             // Closing the window must not leave a notebook server or a multi-gigabyte Linux
-            // environment running in the background eating memory — but it must also not
+            // environment running in the background eating memory, but it must also not
             // stop an environment this instance does not own or is still working inside.
             if let RunEvent::ExitRequested { api, .. } = &event {
                 if app.try_state::<AppState>().is_some_and(|s| s.is_busy()) {

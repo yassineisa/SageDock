@@ -7,7 +7,7 @@ import type { SetupStage } from "../lib/commands";
  * What "What happens during setup?" opens.
  *
  * It used to link to `/help`, the general questions page, which answered none of the
- * question it was attached to and — worse — navigated away from Home mid-setup, which was
+ * question it was attached to and, worse, navigated away from Home mid-setup, which was
  * the surest way to hit the state-loss bug. This is a modal instead: it explains *this*
  * installation, highlights the step actually running, and closing it returns the user
  * exactly where they were without setup noticing.

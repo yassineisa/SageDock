@@ -7,7 +7,7 @@ import { Icon, type IconName } from "../components/Icon";
 /**
  * The first-run introduction.
  *
- * Shown instead of the app — not as a dialog over it — because a student meeting SageDock
+ * Shown instead of the app, not as a dialog over it, because a student meeting SageDock
  * for the first time has nothing to look at behind a dialog, and a modal invites dismissal
  * before anything has been read. It renders outside `AppShell` for the same reason: a
  * navigation rail full of pages that mean nothing yet is noise on this screen.

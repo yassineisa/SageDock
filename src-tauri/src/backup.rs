@@ -13,7 +13,7 @@
 //!
 //! # Format
 //!
-//! An ordinary ZIP file — openable in File Explorer without SageDock, which matters when
+//! An ordinary ZIP file, openable in File Explorer without SageDock, which matters when
 //! somebody needs one file back and does not have the app to hand.
 //!
 //! ```text
@@ -60,7 +60,7 @@ const MAX_FILE_COUNT: u64 = 400_000;
 const MAX_MANIFEST_BYTES: u64 = 128 * 1024 * 1024;
 
 /// Names never worth carrying between machines: caches, build droppings, our own probe
-/// files, and anything holding a Jupyter token. Notebook checkpoints are *not* here —
+/// files, and anything holding a Jupyter token. Notebook checkpoints are *not* here,
 /// `.ipynb_checkpoints` is recovered coursework and is deliberately included.
 fn is_excluded(name: &str) -> bool {
     let lower = name.to_ascii_lowercase();
@@ -98,8 +98,8 @@ pub struct BackupWorkspace {
     pub files: Vec<BackupFile>,
 }
 
-/// Settings worth carrying to another machine. Anything machine-specific — paths, ports,
-/// tokens, the selected package — is deliberately absent.
+/// Settings worth carrying to another machine. Anything machine-specific, paths, ports,
+/// tokens, the selected package, is deliberately absent.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BackupPreferences {
     #[serde(default)]
@@ -1410,7 +1410,7 @@ mod tests {
         }
     }
 
-    /// Content that doesn't match its recorded checksum must never reach the workspace —
+    /// Content that doesn't match its recorded checksum must never reach the workspace,
     /// silently restoring corrupted coursework would be worse than refusing.
     #[test]
     fn content_that_fails_its_checksum_is_refused() {

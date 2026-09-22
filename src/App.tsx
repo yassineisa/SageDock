@@ -16,7 +16,7 @@ import { SetupProvider } from "./state/SetupContext";
  * Either the first-run introduction or the app itself, never both.
  *
  * Separated from `App` so it sits inside `ConfigProvider` and can read the saved setting.
- * The introduction replaces the whole shell rather than appearing over it — see
+ * The introduction replaces the whole shell rather than appearing over it, see
  * `Onboarding` for why.
  */
 function Root() {
@@ -55,7 +55,7 @@ export default function App() {
     <ConfigProvider>
       <TaskProvider>
         {/* Above the router on purpose. Setup belongs to the backend and outlives every
-            screen, so the thing observing it has to outlive every screen too — a provider
+            screen, so the thing observing it has to outlive every screen too, a provider
             mounted inside a route would lose its subscription the moment the user
             navigated, which is exactly the bug this replaces. */}
         <SetupProvider>

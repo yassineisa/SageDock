@@ -5,7 +5,7 @@ const appVersion = packageInfo.version;
 
 // These are UI contract tests against a mocked backend. They prove the screens render,
 // wire up, and stay keyboard-reachable. They prove NOTHING about whether Windows setup,
-// WSL, SageMath, real backups, or real workspace folders work — only the Rust tests and a
+// WSL, SageMath, real backups, or real workspace folders work, only the Rust tests and a
 // real install can do that.
 
 type Options = {
@@ -151,7 +151,7 @@ async function fixture(
 
       // Tools are modelled the way the backend reports them: per-component results, with
       // each group's state derived from them exactly as `scientific::state_of` does. That
-      // keeps the mock honest about the one distinction that matters — a partly installed
+      // keeps the mock honest about the one distinction that matters, a partly installed
       // group is neither "installed" nor "not installed".
       const COMPONENT_LABEL: Record<string, string> = {
         gcc: "C compiler (gcc)",
@@ -249,8 +249,8 @@ async function fixture(
       // --- setup, modelled the way the backend actually behaves -----------------------
       //
       // The real backend owns the operation and publishes a whole snapshot on every
-      // change. Mirroring that here — rather than having `run_setup` resolve with an
-      // outcome — is what lets these tests exercise reconnection, ordering, and the
+      // change. Mirroring that here, rather than having `run_setup` resolve with an
+      // outcome, is what lets these tests exercise reconnection, ordering, and the
       // sequence rule at all.
       const planStep = (stage: string, title: string, explanation: string) => ({
         stage,
@@ -301,7 +301,7 @@ async function fixture(
       // Survives a reload, because the real backend does.
       //
       // `addInitScript` re-runs on every navigation, so without this a reload would reset
-      // the mock backend to idle — and a test for "a screen that mounts late recovers the
+      // the mock backend to idle, and a test for "a screen that mounts late recovers the
       // state" would be asserting against a backend that had forgotten it too, which
       // proves nothing. Session storage stands in for the backend outliving the webview.
       try {
@@ -355,7 +355,7 @@ async function fixture(
       };
 
       // Exposed so a test can drive setup through states the fixture cannot reach on its
-      // own — a permission prompt, a stale event, a crash-shaped interruption.
+      // own, a permission prompt, a stale event, a crash-shaped interruption.
       (window as any).qaSetup = {
         publish: publishSetup,
         /** Emits a raw snapshot without touching the fixture's own sequence counter, so a
@@ -367,7 +367,7 @@ async function fixture(
          * `state`, everything before it that was running is finished, and anything before
          * it never entered is marked as not needed on this PC.
          *
-         * Mirroring the backend here matters — a naive version that only touched the named
+         * Mirroring the backend here matters, a naive version that only touched the named
          * step left "Checking your PC" rendered as still running beside "Preparing
          * Windows", which is a state the real backend cannot produce.
          */
@@ -390,7 +390,7 @@ async function fixture(
         return `${stem}.ipynb`;
       };
       // Mutated as notebooks are opened, mirroring what the real workspace folders would
-      // contain — this is what makes the name-collision dialog appear only when it should.
+      // contain, this is what makes the name-collision dialog appear only when it should.
       const existingFiles: Record<string, string[]> = existingWorkspaceFiles;
 
       let workspaces = [
@@ -421,7 +421,7 @@ async function fixture(
       ];
 
       // The event API calls this *before* invoking `plugin:event|unlisten`, so without it
-      // every unsubscribe threw and the unlisten never reached the mock below — leaving
+      // every unsubscribe threw and the unlisten never reached the mock below, leaving
       // stale listeners registered and filling the console with unhandled rejections.
       // Tests that assert a screen stopped listening need this to be real.
       Object.defineProperty(window, "__TAURI_EVENT_PLUGIN_INTERNALS__", {
@@ -695,7 +695,7 @@ async function fixture(
               };
               if (setupCompletes) {
                 // Finishes on the next tick, the way a real run finishes after the command
-                // has already returned — the point being that the caller never awaits it.
+                // has already returned, the point being that the caller never awaits it.
                 setTimeout(() => {
                   ready = true;
                   publishSetup({
@@ -816,7 +816,7 @@ async function fixture(
       });
       Object.defineProperty(window, "qaCalls", { get: () => calls });
       Object.defineProperty(window, "qaRequests", { get: () => requests });
-      // Simulates a browser finishing a download while Home is already open — the poll
+      // Simulates a browser finishing a download while Home is already open, the poll
       // effect reads this on its next tick the same way it would read a real new file.
       Object.defineProperty(window, "qaAddDownload", {
         value: (entry: { name: string; path: string; modified: number }) => {
@@ -969,12 +969,12 @@ test.describe("scaled workspace drops", () => {
   });
 });
 
-test("ten logo clicks reveal the pixel chase above the sidebar note", async ({ page }) => {
+test("the sidebar decoration stays above the note and honours reduced motion", async ({ page }) => {
   await fixture(page);
   await page.goto("/");
   const logo = page.getByRole("button", { name: "SageDock logo", exact: true });
   for (let i = 0; i < 9; i++) await logo.click();
-  const chase = page.getByRole("img", { name: "A pixel cat chasing the letter B" });
+  const chase = page.getByRole("img", { name: "A pixel cat chasing a bee" });
   await expect(chase).toHaveCount(0);
   await logo.click();
   await expect(chase).toBeVisible();
@@ -983,7 +983,6 @@ test("ten logo clicks reveal the pixel chase above the sidebar note", async ({ p
   expect(animationBox!.y + animationBox!.height).toBeLessThanOrEqual(noteBox!.y);
   await page.getByRole("link", { name: "Settings", exact: false }).click();
   await expect(chase).toBeVisible();
-  await page.screenshot({ path: "docs/qa/pixel-chase.png", fullPage: true });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(page.locator(".pixel-chase-runner")).toHaveCSS("animation-name", "none");
   await page.getByRole("button", { name: "Hide pixel chase" }).click();
@@ -1628,7 +1627,7 @@ test("clicking a downloaded notebook offers a choice of workspace, and a folder 
   await expect(picker.locator(".list-row", { hasText: "Calculus" })).toBeEnabled();
   await expect(picker.locator(".list-row", { hasText: "Physics" })).toBeEnabled();
   // Listed rather than hidden, so a student can see the workspace exists even though it
-  // can't be used from here right now — the same choice WorkspaceCard makes for Launch.
+  // can't be used from here right now, the same choice WorkspaceCard makes for Launch.
   const missing = picker.locator(".list-row", { hasText: "Old Laptop Folder" });
   await expect(missing).toBeDisabled();
   await expect(missing).toContainText("isn't available right now");
@@ -1673,7 +1672,7 @@ test("choosing a workspace with no conflict copies the download in, opens it, an
     ]);
   await expect(page.getByText("Assignment 1.ipynb is open in Physics.")).toBeVisible();
   // Opening a workspace from a download makes it active, the same as its own card's
-  // Launch button — Home must not quietly leave Calculus marked as the one in use.
+  // Launch button, Home must not quietly leave Calculus marked as the one in use.
   await expect(
     page.locator(".workspace-card", { hasText: "Physics" }).getByText("In use"),
   ).toBeVisible();
@@ -1775,7 +1774,7 @@ test("making another copy of a colliding download keeps both notebooks under dif
         args: { name: "Assignment 1.ipynb", workspaceId: "ws-1", onConflict: "copy" },
       },
     ]);
-  // The dedup name, not the colliding one — proof the existing file was left alone.
+  // The dedup name, not the colliding one, proof the existing file was left alone.
   await expect(page.getByText("Assignment 1 (1).ipynb is open in Calculus.")).toBeVisible();
 });
 
@@ -2285,8 +2284,8 @@ test("a download saved outside the Downloads folder says which folder it went to
 // started it, one indefinite spinner standing in for three different situations, and an
 // explanation link that navigated away from the progress it sat beside.
 //
-// The fixture models the backend faithfully — `run_setup` returns a snapshot immediately
-// and never resolves with the outcome — so a test passing here exercises the same contract
+// The fixture models the backend faithfully, `run_setup` returns a snapshot immediately
+// and never resolves with the outcome, so a test passing here exercises the same contract
 // the real app does.
 
 /** Starts setup and waits until the progress view is actually on screen. */
@@ -2336,7 +2335,7 @@ test("setup survives leaving Home and coming back", async ({ page }) => {
 
   await page.getByRole("link", { name: "Home", exact: false }).click();
   const panel = page.getByRole("region", { name: "Setup progress" });
-  // Recovered immediately, showing the progress that happened while away — not a blank
+  // Recovered immediately, showing the progress that happened while away, not a blank
   // card, not "Checking SageMath…", and not a restart.
   await expect(panel).toContainText("Testing SageMath");
   await expect(panel).toContainText("Running a test notebook cell.");
@@ -2387,12 +2386,12 @@ test("a stale or out-of-order update cannot roll progress backwards", async ({ p
   );
   const panel = page.getByRole("region", { name: "Setup progress" });
   // Scoped to the heading on purpose. Every stage name also appears in the step list
-  // below, so asserting against the whole panel would pass whatever the current stage is
-  // — the heading is the only place that says which one is *now*.
+  // below, so asserting against the whole panel would pass whatever the current stage is,
+  // the heading is the only place that says which one is *now*.
   const current = panel.locator("h3");
   await expect(current).toHaveText("Testing SageMath");
 
-  // A snapshot from earlier in the same run arriving late — what a slow query answering
+  // A snapshot from earlier in the same run arriving late, what a slow query answering
   // after a fast event looks like.
   await page.evaluate(() => {
     const snapshot = (window as any).qaSetup.current();
@@ -2437,7 +2436,7 @@ test("clicking Set up twice does not start two installations", async ({ page }) 
   // cannot be delivered at all.
   await expect(button).toHaveCount(0);
 
-  // The UI being tidy is not the real protection, though — a race, a stale window, or a
+  // The UI being tidy is not the real protection, though, a race, a stale window, or a
   // replayed IPC call would bypass it entirely. So this also goes behind the UI and calls
   // the command directly: the backend's operation lock must refuse it.
   const refused = await page.evaluate(async () => {
@@ -2471,7 +2470,7 @@ test("a permission prompt is named as waiting for the user, not shown as working
       stage: "installing_windows_components",
       title: "Preparing Windows",
       detail:
-        "Windows is asking for permission. Look for the permission window — it can open behind SageDock or flash in the taskbar. Nothing continues until you answer it.",
+        "Windows is asking for permission. Look for the permission window, it can open behind SageDock or flash in the taskbar. Nothing continues until you answer it.",
       steps: (window as any).qaSetup.stage("installing_windows_components", "active"),
     }),
   );
@@ -2511,7 +2510,7 @@ test("a heartbeat is labelled as liveness rather than shown as progress", async 
   await page.goto("/");
   await startSetup(page);
 
-  // A heartbeat moves only the liveness timestamp — the backend deliberately leaves
+  // A heartbeat moves only the liveness timestamp, the backend deliberately leaves
   // `updated_at` alone, because a beat proves nothing is advancing.
   await page.evaluate(() => {
     const current = (window as any).qaSetup.current();
@@ -2569,7 +2568,7 @@ test("an interrupted run is reported on the next launch instead of silently resu
   await expect(panel).toContainText("Setup was interrupted");
   await expect(panel).toContainText("picks up where it left off");
 
-  // Nothing was started on our behalf. The old failure mode was the opposite — restoring
+  // Nothing was started on our behalf. The old failure mode was the opposite, restoring
   // a stale "running" flag and leaving the app stuck behind it.
   expect(await page.evaluate(() => (window as any).qaCalls.includes("run_setup"))).toBe(false);
 

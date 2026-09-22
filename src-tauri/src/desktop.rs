@@ -24,8 +24,8 @@ pub fn recent_notebooks(state: State<'_, AppState>) -> AppResult<Vec<library::No
     library::recent(&state.active_workspace_dir())
 }
 
-/// Opens a native picker for a notebook to add to a workspace. Nothing is copied yet — only
-/// remembered — so the student can be asked which workspace it belongs in, and about a name
+/// Opens a native picker for a notebook to add to a workspace. Nothing is copied yet, only
+/// remembered, so the student can be asked which workspace it belongs in, and about a name
 /// collision if there is one, the same way a notebook found in Downloads is handled.
 #[tauri::command(async)]
 pub fn choose_notebook_file(
@@ -54,7 +54,7 @@ pub fn choose_notebook_file(
 /// Sends a notebook already inside the active workspace to the Recycle Bin.
 ///
 /// Only reachable from the Recently Opened list, which only ever shows notebooks under the
-/// active workspace — `library::resolve` is what confirms that and refuses anything else.
+/// active workspace, `library::resolve` is what confirms that and refuses anything else.
 #[tauri::command(async)]
 pub fn delete_recent_notebook(path: String, state: State<'_, AppState>) -> AppResult<()> {
     let workspace = state.require_active_workspace()?;
@@ -92,7 +92,7 @@ pub fn delete_downloaded_file(
 }
 
 /// Opens a downloaded file with whatever program Windows already associates with it, without
-/// bringing it into SageDock — a quick look, not an import.
+/// bringing it into SageDock, a quick look, not an import.
 #[tauri::command(async)]
 pub fn open_downloaded_file_externally(
     name: String,
@@ -183,7 +183,7 @@ pub fn open_in_viewer(
     session: &JupyterSession,
     target: ViewerTarget<'_>,
 ) -> AppResult<()> {
-    // Both screens are addressed the same way — inside this session's own Lab workspace —
+    // Both screens are addressed the same way, inside this session's own Lab workspace,
     // and `session_url` is what decides whether a `/tree` segment belongs in the result.
     // Appending one unconditionally is what made launching a course land on
     // `/lab/workspaces/sagedock-<port>/tree`, which JupyterLab reports as not found.

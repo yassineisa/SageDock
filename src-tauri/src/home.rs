@@ -1,7 +1,7 @@
 //! Commands behind the Home screen: the computing environment's lifecycle, the user's
 //! workspaces, and portable backups of their work.
 //!
-//! Grouped here rather than in `commands` or `desktop` because these three share one idea —
+//! Grouped here rather than in `commands` or `desktop` because these three share one idea,
 //! they are the operations a student performs on *their own work*, as opposed to on the
 //! SageMath runtime. Every one of them reports what actually happened rather than that a
 //! command was issued.
@@ -42,7 +42,7 @@ pub struct EnvironmentStatus {
     /// At least one notebook service is answering.
     pub notebooks_running: bool,
     pub open_workspaces: usize,
-    /// What SageDock is doing, if anything — used to disable conflicting actions.
+    /// What SageDock is doing, if anything, used to disable conflicting actions.
     pub busy: Option<String>,
 }
 
@@ -70,7 +70,7 @@ pub fn environment_status(state: State<'_, AppState>) -> EnvironmentStatus {
 /// Stops the notebook services and then SageDock's own Linux environment.
 ///
 /// Ordered deliberately: Jupyter is asked to shut down first so kernels can exit cleanly,
-/// and only then is the environment stopped underneath them. The app stays open — the next
+/// and only then is the environment stopped underneath them. The app stays open, the next
 /// notebook or workspace launch starts everything again.
 #[tauri::command(async)]
 pub fn stop_environment(state: State<'_, AppState>) -> AppResult<EnvironmentStatus> {
@@ -189,8 +189,8 @@ pub fn rename_workspace(
     // Renaming moves the folder, which would strand a notebook server rooted inside it.
     //
     // Scoped to *this* folder. Asking whether any server was running anywhere refused every
-    // rename as soon as one notebook was open in any course — including the Home launcher's
-    // own session — so renaming appeared to do nothing at all.
+    // rename as soon as one notebook was open in any course, including the Home launcher's
+    // own session, so renaming appeared to do nothing at all.
     let path = state.workspaces(|store| store.find(&id).map(|w| w.path.clone()));
     if let Some(path) = path {
         if state.has_server_under(&path) && path.is_dir() {
@@ -538,10 +538,10 @@ fn check_target(state: &AppState, source: &Path, workspace_id: &str) -> AppResul
 }
 
 /// Copies `source` into the chosen workspace and opens it there. Shared by the Downloads
-/// flow and the "Open notebook" picker flow — both end the same way once a workspace and a
+/// flow and the "Open notebook" picker flow, both end the same way once a workspace and a
 /// conflict decision are known.
 ///
-/// The target need not be the workspace that was active a moment ago — a student can send a
+/// The target need not be the workspace that was active a moment ago, a student can send a
 /// notebook to any course folder, not only the one Home happened to be showing. Opening it
 /// afterwards makes that workspace active, the same as clicking Launch workspace on its
 /// card, so returning to Home reflects where the notebook actually landed.
@@ -905,7 +905,7 @@ mod tests {
         drop(guard);
     }
 
-    /// Workspaces must sit beside the default one, not inside it — nesting would duplicate
+    /// Workspaces must sit beside the default one, not inside it, nesting would duplicate
     /// every file in a backup and show workspaces inside each other's file browsers.
     #[test]
     fn managed_workspaces_are_siblings_of_the_default_workspace() {

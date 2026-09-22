@@ -63,7 +63,7 @@ pub fn machine_arch() -> &'static str {
 }
 
 /// Looks for an image in each directory in order, returning the newest match from the
-/// first directory that has one. Order expresses preference — a copy bundled with the
+/// first directory that has one. Order expresses preference, a copy bundled with the
 /// app wins over one that happens to be sitting in Downloads.
 ///
 /// Only the top level of each directory is examined: recursively crawling a user's
@@ -129,7 +129,7 @@ fn manifest_path(archive: &Path) -> PathBuf {
 }
 
 /// Cheap validation: is this plausibly a SageDock image, made for this PC and this app?
-/// Does not hash the file — see `verify` for that.
+/// Does not hash the file, see `verify` for that.
 pub fn inspect(path: &Path) -> AppResult<RuntimeImage> {
     let metadata =
         std::fs::metadata(path).map_err(|err| unreadable_error(path, err.to_string()))?;

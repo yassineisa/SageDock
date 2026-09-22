@@ -2,7 +2,7 @@
 //!
 //! Notebooks are written on the Windows side, directly into the user's workspace, in
 //! standard `.ipynb` format. Nothing here is SageDock-specific: the files remain ordinary
-//! Jupyter notebooks that open in any Jupyter, which is the point — the product spec rules
+//! Jupyter notebooks that open in any Jupyter, which is the point, the product spec rules
 //! out a proprietary notebook format.
 
 use std::fs::OpenOptions;
@@ -85,7 +85,7 @@ const MAX_NAME_ATTEMPTS: u32 = 10_000;
 /// system rather than from a prior existence check. Asking "does this name exist?" and then
 /// writing is a race: two notebook requests moments apart can both observe the same free
 /// name, and the second write silently truncates the first. `create_new` makes the create
-/// atomic — exactly one caller can win a given name, and the loser simply tries the next.
+/// atomic, exactly one caller can win a given name, and the loser simply tries the next.
 pub fn create_notebook(workspace_dir: &Path, kind: NotebookKind) -> AppResult<String> {
     let folder = workspace_dir;
     std::fs::create_dir_all(folder).map_err(|err| create_error(err.to_string()))?;
@@ -109,7 +109,7 @@ pub fn create_notebook(workspace_dir: &Path, kind: NotebookKind) -> AppResult<St
                 tracing::info!(target: "notebook", kind = ?kind, file = %file_name, "created notebook");
                 return Ok(file_name);
             }
-            // Someone else holds this name — including a notebook the user made earlier.
+            // Someone else holds this name, including a notebook the user made earlier.
             Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
             Err(err) => return Err(create_error(err.to_string())),
         }

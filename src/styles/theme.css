@@ -1,4 +1,4 @@
-/* SageDock design tokens — Metro foundation, Windows 11 conventions.
+/* SageDock design tokens, Metro foundation, Windows 11 conventions.
  *
  * Metro's rules, from Microsoft's own description: typography carries the hierarchy,
  * content comes before chrome, geometry stays simple, controls are authentically digital
@@ -12,7 +12,7 @@
  *     flyouts). Nothing else rounds.
  *   - Minimum legible sizes: 14px Semibold, 12px Regular.
  *
- * Accent is Concordia burgundy. Status colours are separate from the accent on purpose —
+ * Accent is Concordia burgundy. Status colours are separate from the accent on purpose,
  * an accent that also means "healthy" cannot be used for a primary button next to a
  * warning without the colour saying two things at once.
  */
@@ -106,7 +106,7 @@
 
   /* Deeper fill with white text rather than a lightened fill with dark text: the lighter
      pink reads as candy next to the rust neutrals, and a near-black label on it lands
-     around 3.8:1 — below the 4.5:1 minimum for body text. */
+     around 3.8:1, below the 4.5:1 minimum for body text. */
   --accent: #a8374d;
   --accent-hover: #bc4159;
   --accent-pressed: #8e2c3f;

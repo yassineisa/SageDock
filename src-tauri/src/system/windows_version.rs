@@ -2,7 +2,7 @@
 //!
 //! Reads the build number from the registry rather than `GetVersionEx`/`GetVersion`,
 //! which lie about the OS version unless the calling process has an application
-//! manifest declaring compatibility with each Windows release — a manifest maintenance
+//! manifest declaring compatibility with each Windows release, a manifest maintenance
 //! burden this avoids entirely.
 
 use winreg::enums::*;

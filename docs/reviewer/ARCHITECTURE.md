@@ -62,7 +62,7 @@ one mirrors.
 Events stream from Rust to the UI rather than being polled: `setup-progress`,
 `backup-progress` and `tool-progress`, plus `close-requested` for the window-close guard
 and `files-dropped` reporting what a drag from Windows onto the window copied in. The last
-one is an event rather than a return value because a drop has no caller — and because the
+one is an event rather than a return value because a drop has no caller, and because the
 copy happens in Rust, so the dropped absolute paths never reach the frontend.
 
 ## Rust module layering
@@ -71,7 +71,7 @@ The layering is intentional and stated in
 [`runtime/mod.rs`](../../src-tauri/src/runtime/mod.rs). Violating it is the main thing to
 watch for in review.
 
-### `runtime/` — owns installation and the Linux environment
+### `runtime/`: owns installation and the Linux environment
 
 | File           | Lines | Responsibility                                                                                                          |
 | -------------- | ----- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -87,7 +87,7 @@ watch for in review.
 `sagedock-selftest` binaries). The app depends only on these, never on how the image was
 assembled inside, so a new image can change SageMath versions without an app update.
 
-### `system/` — read-only diagnostics
+### `system/`: read-only diagnostics
 
 Nine modules, each a single check, all **read-only**; installation and repair belong to
 `runtime/`. Every check follows the gather/interpret split described in
@@ -103,7 +103,7 @@ machine. See [RESTART-LOGIC.md](RESTART-LOGIC.md).
 `system/process.rs` is shared with `runtime/`, so console-window suppression and output
 decoding behave identically everywhere.
 
-### `jupyter/` — the notebook service
+### `jupyter/`: the notebook service
 
 `mod.rs` (435 lines) owns the server lifecycle: loopback binding, per-session CSPRNG token,
 OS-assigned port, readiness by polling `/api/status` rather than sleeping, and graceful
@@ -132,7 +132,7 @@ struct that answers four questions the product spec requires of any user-facing 
 what happened (`title`, `message`), is my work safe (`user_files_safe`), can SageDock fix it
 (`recovery_actions`), and what is the technical detail (`technical_details`, shown only
 behind a disclosure). Commands must never return raw process output or bare strings. When
-reviewing a new error path, check that `user_files_safe` is accurate — it defaults to
+reviewing a new error path, check that `user_files_safe` is accurate: it defaults to
 `true`.
 
 **One long operation at a time.** `AppState::begin_operation` returns an `OperationGuard`
@@ -185,7 +185,7 @@ the packaged shell. Routing is `/`, `/tools`, `/recovery`, `/diagnostics`, `/set
 
 The router is not reached at all until `onboarding_complete` is true: `Root` renders the
 first-run introduction **instead of** the whole shell. Anything that gates the app this way
-has to be mirrored in the UI test fixture — the mock reports the introduction as already
+has to be mirrored in the UI test fixture: the mock reports the introduction as already
 seen by default, and forgetting that would fail every UI test at once.
 
 Styling rule worth enforcing in review: components carry **class names only**. Colours and
@@ -213,10 +213,10 @@ fails without it. The release profile uses `lto = true`, `codegen-units = 1`,
 
 ## Suggested reading order
 
-1. `src-tauri/src/lib.rs` — the whole command surface and startup sequence.
-2. `src/lib/commands.ts` — the same surface from the frontend, with types.
-3. `src-tauri/src/error.rs` — the error contract every path funnels through.
-4. `src-tauri/src/runtime/mod.rs` then `provision.rs` — the setup state machine.
-5. `src-tauri/src/jupyter/mod.rs` — the security-critical part.
-6. `src-tauri/src/state.rs` — concurrency and the operation lock.
-7. `src-tauri/src/backup.rs` — the largest module, and the one that handles user data.
+1. `src-tauri/src/lib.rs`, the whole command surface and startup sequence.
+2. `src/lib/commands.ts`, the same surface from the frontend, with types.
+3. `src-tauri/src/error.rs`, the error contract every path funnels through.
+4. `src-tauri/src/runtime/mod.rs` then `provision.rs`, the setup state machine.
+5. `src-tauri/src/jupyter/mod.rs`, the security-critical part.
+6. `src-tauri/src/state.rs`, concurrency and the operation lock.
+7. `src-tauri/src/backup.rs`, the largest module, and the one that handles user data.

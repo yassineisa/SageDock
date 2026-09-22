@@ -1,10 +1,10 @@
-//! Tauri commands — the only bridge between the frontend and backend logic. The frontend
+//! Tauri commands, the only bridge between the frontend and backend logic. The frontend
 //! never constructs shell commands or supplies absolute file paths; it calls typed commands and
 //! gets back typed results or a structured `AppError`.
 //!
 //! Anything that can take longer than a moment is declared `#[tauri::command(async)]`. A
 //! plain synchronous command runs on the main thread, where a slow one freezes the window's
-//! event loop — including delivery of the progress events meant to show it isn't frozen.
+//! event loop, including delivery of the progress events meant to show it isn't frozen.
 
 use std::path::PathBuf;
 
@@ -83,7 +83,7 @@ pub fn installed_browsers() -> Vec<crate::browsers::Browser> {
 
 /// Records which installed browser to open notebooks in. `None` means the Windows default.
 ///
-/// Takes an identifier from `installed_browsers`, never a path — see `browsers.rs` for why
+/// Takes an identifier from `installed_browsers`, never a path, see `browsers.rs` for why
 /// that distinction is load-bearing.
 #[tauri::command]
 pub fn set_preferred_browser(
@@ -97,7 +97,7 @@ pub fn set_preferred_browser(
 ///
 /// Separate from the settings the introduction collects: skipping it must still count as
 /// having seen it, or a student who skips would meet it again on every launch. Takes a
-/// value rather than only marking it done so Settings can offer to show it again — without
+/// value rather than only marking it done so Settings can offer to show it again, without
 /// that, skipping it once would put it permanently out of reach.
 #[tauri::command]
 pub fn set_onboarding_complete(value: bool, state: State<'_, AppState>) -> AppResult<AppConfig> {
@@ -250,11 +250,11 @@ impl crate::setup::ProgressSink for EventSink {
 ///
 /// The guard used elsewhere borrows `AppState`, which cannot outlive a command; this one
 /// carries an `AppHandle` instead so ownership can live on the background thread, and
-/// releases the slot on every return path out of the worker — including the early ones.
+/// releases the slot on every return path out of the worker, including the early ones.
 ///
 /// One honest limitation: release builds set `panic = "abort"`, so a panic inside the
 /// worker takes the process down rather than unwinding, and this `Drop` never runs. That
-/// is not a leak — the whole app is gone — but it does mean the guard's panic-safety only
+/// is not a leak, the whole app is gone, but it does mean the guard's panic-safety only
 /// applies to debug and test builds. What it always covers is the ordinary case: every
 /// `return` and `?` on the way out.
 struct ThreadOperation(AppHandle);
@@ -298,7 +298,7 @@ pub fn run_setup(
     let id = operation_id.clone();
     // `Builder::spawn` rather than `thread::spawn`, which panics when the OS refuses a
     // thread. The slot is already claimed at this point, so a panic here would strand the
-    // app as permanently busy — precisely the state this change exists to make impossible.
+    // app as permanently busy, precisely the state this change exists to make impossible.
     let spawned = std::thread::Builder::new()
         .name("sagedock-setup".into())
         .spawn(move || {
@@ -310,7 +310,7 @@ pub fn run_setup(
             let mut emit = |progress: runtime::SetupProgress| {
                 use runtime::provision::ProgressKind;
                 match progress.kind {
-                    // Liveness only — deliberately does not touch the progress timestamp.
+                    // Liveness only, deliberately does not touch the progress timestamp.
                     ProgressKind::Heartbeat => state.setup.heartbeat(Some(&sink)),
                     ProgressKind::AwaitingPermission => state.setup.set_phase(
                         Some(&sink),
@@ -392,7 +392,7 @@ pub fn run_setup(
 
     if let Err(err) = spawned {
         // Nothing is running, so the slot must go back and the operation must still reach
-        // a recorded ending — an operation that simply vanished is the one outcome this
+        // a recorded ending, an operation that simply vanished is the one outcome this
         // design does not allow.
         let problem = AppError::new(
             "setup",
@@ -419,7 +419,7 @@ pub fn run_setup(
 /// The authoritative state of setup, answerable at any moment.
 ///
 /// This is what makes navigation safe. A screen mounting mid-operation calls this and gets
-/// the whole picture — phase, stage, step list, elapsed time, log — rather than waiting for
+/// the whole picture, phase, stage, step list, elapsed time, log, rather than waiting for
 /// the next event and showing nothing until one arrives.
 #[tauri::command(async)]
 pub fn setup_snapshot(state: State<'_, AppState>) -> crate::setup::SetupSnapshot {

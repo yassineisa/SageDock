@@ -1,6 +1,6 @@
 /**
  * Single bridge to the Rust backend. Every backend call the UI needs goes through a typed
- * function here — components must never call `invoke` directly, so the set of operations
+ * function here, components must never call `invoke` directly, so the set of operations
  * the frontend can trigger stays an explicit, auditable list. Imports use native pickers;
  * notebook paths are workspace-relative and validated by the backend. No call accepts
  * arbitrary shell commands or absolute filesystem paths from the webview.
@@ -20,7 +20,7 @@ export interface AppConfig {
 }
 
 /**
- * One web browser installed on this PC. `id` is a registry client name, not a path — the
+ * One web browser installed on this PC. `id` is a registry client name, not a path, the
  * frontend never learns or sends where a program lives. See `src-tauri/src/browsers.rs`.
  */
 export interface Browser {
@@ -42,7 +42,7 @@ interface RecoveryAction {
   label: string;
 }
 
-/** Mirrors the Rust `AppError` shape — see src-tauri/src/error.rs. */
+/** Mirrors the Rust `AppError` shape, see src-tauri/src/error.rs. */
 export interface AppError {
   code: string;
   title: string;
@@ -67,7 +67,7 @@ export function isAppError(value: unknown): value is AppError {
   );
 }
 
-/** Mirrors Rust's `SetupStage` — see src-tauri/src/runtime/provision.rs. */
+/** Mirrors Rust's `SetupStage`, see src-tauri/src/runtime/provision.rs. */
 export type SetupStage =
   | "preflight"
   | "installing_windows_components"
@@ -115,7 +115,7 @@ interface SetupLogLine {
 
 /**
  * The authoritative state of setup. Emitted on "setup-progress" and returned by
- * `setupSnapshot()` — deliberately the same shape, so a screen that mounts halfway
+ * `setupSnapshot()`, deliberately the same shape, so a screen that mounts halfway
  * through recovers exactly what a screen that was listening all along already has.
  */
 export interface SetupSnapshot {
@@ -127,7 +127,7 @@ export interface SetupSnapshot {
   stage: SetupStage | null;
   title: string;
   detail: string | null;
-  /** Only ever measured. `null` means the stage cannot measure itself — show indeterminate
+  /** Only ever measured. `null` means the stage cannot measure itself, show indeterminate
    * progress rather than inventing a number. */
   percent: number | null;
   steps: SetupStep[];
@@ -191,7 +191,7 @@ export interface EnvironmentStatus {
 
 // --- workspaces -------------------------------------------------------------------------
 
-/** Why a workspace folder can't be used — each needs different advice, so not a boolean. */
+/** Why a workspace folder can't be used, each needs different advice, so not a boolean. */
 type WorkspaceStatus = "available" | "missing" | "unreadable";
 
 export interface WorkspaceView {
@@ -309,7 +309,7 @@ export const commands = {
   /** A shareable report of the setup run, already redacted. */
   setupDiagnostics: () => invoke<string>("setup_diagnostics"),
   newNotebook: (kind: NotebookKind) => invoke<NotebookLaunch>("new_notebook", { kind }),
-  /** Stops SageMath and closes the app. The promise may never settle — the process exits. */
+  /** Stops SageMath and closes the app. The promise may never settle, the process exits. */
   shutdownAndQuit: () => invoke<void>("shutdown_and_quit"),
   /** Opens the folder holding every workspace, not whichever one is currently active. */
   openWorkspacesFolder: () => invoke<void>("open_workspaces_folder"),
@@ -325,7 +325,7 @@ export const commands = {
     invoke<DownloadTarget>("check_download_target", { name, workspaceId }),
   /**
    * Copies a downloaded notebook into the chosen workspace and opens it there, making that
-   * workspace active — the same as Launch workspace on its card. Opening one in place is
+   * workspace active, the same as Launch workspace on its card. Opening one in place is
    * impossible: the notebook service is rooted at a workspace, not at Downloads.
    */
   openDownloadedNotebook: (name: string, workspaceId: string, onConflict: DownloadConflict) =>
@@ -339,8 +339,8 @@ export const commands = {
   startNotebookDrag: (path: string, source: "workspace" | "downloads") =>
     invoke<void>("start_notebook_drag", { path, source }),
   /**
-   * Opens a native picker for a notebook to add to a workspace. Nothing is copied yet — the
-   * backend only remembers the choice — so it can be run through the same workspace-and-
+   * Opens a native picker for a notebook to add to a workspace. Nothing is copied yet, the
+   * backend only remembers the choice, so it can be run through the same workspace-and-
    * conflict flow as a notebook found in Downloads. Resolves to null if the picker is closed.
    */
   chooseNotebookFile: () => invoke<string | null>("choose_notebook_file"),
@@ -408,7 +408,7 @@ export interface NotebookEntry {
   name: string;
   modified: number;
   /**
-   * Where the file is, for a download saved outside the Windows Downloads folder — the
+   * Where the file is, for a download saved outside the Windows Downloads folder, the
    * containing folder's **name** only, never a path. `null` means the Downloads folder
    * itself. Recently-opened notebooks never set it.
    */

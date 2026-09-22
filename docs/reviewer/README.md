@@ -11,7 +11,7 @@ notebooks in ordinary Windows folders outside that distribution.
 **Why it is being reviewed:** to decide whether it can be installed on shared university
 lab computers.
 
-**Current version:** 1.4.5. Rust and frontend are 14,814 and 6,817 lines respectively.
+**Current version:** 1.4.6. Rust and frontend are 14,814 and 6,816 lines respectively.
 
 > The prose below was written at 1.3.1 and its narrative still holds, but treat version
 > numbers and counts in this folder as of that date unless a document says otherwise.

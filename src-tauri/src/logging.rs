@@ -8,7 +8,7 @@
 //! re-instrumenting call sites.
 //!
 //! Verbose (`debug`) logging is opt-in via the `SAGEDOCK_LOG` env var (e.g.
-//! `SAGEDOCK_LOG=debug`) — normal users run at `info` by default, per the product
+//! `SAGEDOCK_LOG=debug`), normal users run at `info` by default, per the product
 //! spec's requirement that debug logs not be on by default for end users.
 
 use std::path::Path;
@@ -20,7 +20,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
 
 /// Initializes the global tracing subscriber. Returns a guard that must be kept
-/// alive for the lifetime of the app — dropping it stops the background writer
+/// alive for the lifetime of the app, dropping it stops the background writer
 /// thread and can silently truncate the last log lines on shutdown.
 pub fn init_logging(log_dir: &Path) -> WorkerGuard {
     std::fs::create_dir_all(log_dir).ok();

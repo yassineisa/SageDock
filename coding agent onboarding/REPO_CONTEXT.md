@@ -17,7 +17,7 @@ in ordinary Windows folders **outside** that distribution.
 
 The original product specification is [`app.md`](app.md) (1,345 lines). It calls the
 product _DataLab_; the name later changed to SageDock, and all code, identifiers and paths
-use SageDock. Parts of it have been deliberately superseded — see
+use SageDock. Parts of it have been deliberately superseded, see
 [`../docs/reviewer/README.md`](../docs/reviewer/README.md) for the currency table.
 
 ### The one invariant everything follows from
@@ -38,7 +38,7 @@ These are operational constraints on the product, not style preferences:
 - Never disable Windows security protections.
 - Never expose the notebook server on the network. It binds `127.0.0.1` only.
 - Never concatenate untrusted input into a shell command. Everything is `argv` arrays.
-- Never use `wsl --shutdown` — it affects unrelated distributions belonging to other
+- Never use `wsl --shutdown`, it affects unrelated distributions belonging to other
   coursework. Terminate only SageDock's own distro, by name.
 - Never delete a user's project folders during uninstall or repair without explicit
   confirmation.
@@ -49,7 +49,7 @@ These are operational constraints on the product, not style preferences:
 
 ## 2. Technology and shape
 
-Tauri v2 — a Rust binary owning a WebView2 window that renders a React 19 / TypeScript
+Tauri v2, a Rust binary owning a WebView2 window that renders a React 19 / TypeScript
 frontend built by Vite.
 
 ```
@@ -73,12 +73,12 @@ every IPC command in one block.
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `tauri` v2 + `tauri-build`     | The shell, window and IPC layer.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `tauri-plugin-opener`          | Open a URL/file/folder with the OS default. Callable from **Rust** without a capability grant.                                                                                                                                                                                                                                                                                                                                                                            |
-| `tauri-plugin-dialog`          | Native file pickers — always run in Rust, never in the webview.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `tauri-plugin-dialog`          | Native file pickers, always run in Rust, never in the webview.                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `tauri-plugin-single-instance` | Registered **first**. One SageDock owns the environment; a second launch focuses the first and exits.                                                                                                                                                                                                                                                                                                                                                                     |
 | `winreg`                       | Read-only registry access: Windows version, WSL registration, reboot flags, installed browsers.                                                                                                                                                                                                                                                                                                                                                                           |
 | `ureq`                         | Used **only** against `127.0.0.1` for Jupyter readiness and shutdown.                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `zip` (deflate only)           | The portable backup container. Default features off so a backup opens in any standard tool.                                                                                                                                                                                                                                                                                                                                                                               |
-| `drag`                         | Starts a native OS drag so a notebook can be dragged out to the desktop. Used instead of `tauri-plugin-drag`, which exposes the operation only as a webview command — that would mean handing absolute paths to the frontend.                                                                                                                                                                                                                                             |
+| `drag`                         | Starts a native OS drag so a notebook can be dragged out to the desktop. Used instead of `tauri-plugin-drag`, which exposes the operation only as a webview command, that would mean handing absolute paths to the frontend.                                                                                                                                                                                                                                              |
 | `trash`                        | Deleting sends to the Recycle Bin rather than unlinking, the same margin Explorer gives.                                                                                                                                                                                                                                                                                                                                                                                  |
 | `rfd`                          | The Save As dialog for downloads from the built-in browser. Forced, not preferred: WebView2 raises the download event on the UI thread, where `tauri-plugin-dialog`'s `blocking_*` pickers deadlock the event loop by its own documentation, and its callback form answers after the handler must already have returned a destination. `rfd` is what that plugin wraps, so this adds no new transitive dependency; the version and features are copied from its manifest. |
 | `getrandom`, `sha2`, `base64`  | Session tokens, runtime image checksums.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
@@ -129,7 +129,7 @@ delta, and the same snapshot is separately queryable via `setup_snapshot`. That 
 deliberate: setup is owned by the backend and outlives any screen, so a screen must be able
 to recover the full picture by asking rather than by having been listening. Every snapshot
 carries `operation_id` and a monotonic `seq`, and **an observer must ignore any snapshot
-that is not newer** — same operation and `seq` not greater. Without that rule a slow query
+that is not newer**, same operation and `seq` not greater. Without that rule a slow query
 answering after a fast event rolls the display backwards. See
 [`../docs/SETUP-RELIABILITY-HANDOFF.md`](../docs/SETUP-RELIABILITY-HANDOFF.md) §3.
 
@@ -137,13 +137,13 @@ answering after a fast event rolls the display backwards. See
 
 The `#[tauri::command]` macro defaults to `rename_all = "camelCase"`, so JS `workspaceId`
 maps to Rust `workspace_id`. **The UI test mock intercepts `invoke` directly and therefore
-sees the camelCase keys verbatim** — a mock keyed on `workspace_id` silently never matches.
+sees the camelCase keys verbatim**, a mock keyed on `workspace_id` silently never matches.
 
 ---
 
 ## 4. Rust module map
 
-### `runtime/` — owns installation and the Linux environment
+### `runtime/`, owns installation and the Linux environment
 
 Layering is intentional and stated in
 [`runtime/mod.rs`](../src-tauri/src/runtime/mod.rs). Violating it is the main thing to watch
@@ -161,12 +161,12 @@ for in review.
 `runtime::contract` pins the four paths every runtime image must provide, so a new image can
 change SageMath versions without an app update.
 
-### `system/` — read-only diagnostics
+### `system/`, read-only diagnostics
 
 Nine modules, each one check, all **read-only**. Installation and repair belong to
 `runtime/`. Every check follows the **gather/interpret split**:
 
-- `gather()` does the registry read, WMI query or process spawn. **Not unit-tested** — its
+- `gather()` does the registry read, WMI query or process spawn. **Not unit-tested**, its
   result depends on the machine.
 - `interpret(...)` is a pure function from gathered data to a `CheckItem`. **Exhaustively
   unit-tested.**
@@ -176,7 +176,7 @@ module comment documents a real bug where three unrelated Windows "restart pendi
 indicators were collapsed into one boolean, making SageDock demand a restart on nearly
 every machine.
 
-### `jupyter/` — the notebook service
+### `jupyter/`, the notebook service
 
 `mod.rs` owns the server lifecycle: loopback binding, a per-session CSPRNG token, an
 OS-assigned port, readiness by polling `/api/status` rather than sleeping, and graceful
@@ -184,18 +184,18 @@ shutdown that asks Jupyter to stop before killing `wsl.exe`.
 
 **JupyterLab routing is fiddly and has caused a shipped bug.** The valid routes are:
 
-| Route                                | Result                                                           |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| `/lab`                               | Landing page                                                     |
-| `/lab/tree/<path>`                   | File browser at a path                                           |
-| `/lab/workspaces/<name>`             | A named UI workspace                                             |
-| `/lab/workspaces/<name>/tree/<path>` | Valid                                                            |
-| `/lab/workspaces/<name>/tree`        | **Invalid** — client-side "Path Not Found", then redirect to `/` |
+| Route                                | Result                                                          |
+| ------------------------------------ | --------------------------------------------------------------- |
+| `/lab`                               | Landing page                                                    |
+| `/lab/tree/<path>`                   | File browser at a path                                          |
+| `/lab/workspaces/<name>`             | A named UI workspace                                            |
+| `/lab/workspaces/<name>/tree/<path>` | Valid                                                           |
+| `/lab/workspaces/<name>/tree`        | **Invalid**, client-side "Path Not Found", then redirect to `/` |
 
 The last one returns **HTTP 200**; the failure is JupyterLab's client-side router, so
 probing with HTTP alone will tell you everything is fine when it is not. `session_url` is
 the single function that decides whether a `/tree` segment belongs in the URL. Do not
-rebuild URLs by string surgery elsewhere — that is exactly what caused the bug.
+rebuild URLs by string surgery elsewhere, that is exactly what caused the bug.
 
 ### Application layer
 
@@ -211,7 +211,7 @@ rebuild URLs by string surgery elsewhere — that is exactly what caused the bug
 | `downloads.rs`  | A record of what the built-in browser downloaded, so Home lists a file saved outside the Downloads folder. A record, never a scan. |
 | `config.rs`     | Settings persistence.                                                                                                              |
 | `error.rs`      | `AppError` / `ErrorSeverity`.                                                                                                      |
-| `storage.rs`    | `atomic_write`. Never used for notebooks — Jupyter owns those.                                                                     |
+| `storage.rs`    | `atomic_write`. Never used for notebooks, Jupyter owns those.                                                                      |
 | `logging.rs`    | Structured JSON logging.                                                                                                           |
 
 ---
@@ -222,7 +222,7 @@ rebuild URLs by string surgery elsewhere — that is exactly what caused the bug
 (`title`, `message`), is my work safe (`user_files_safe`), can SageDock fix it
 (`recovery_actions`), and the technical detail (`technical_details`, shown behind a
 disclosure). Commands must never return raw process output or bare strings.
-`user_files_safe` **defaults to `true`** — check it is accurate on any new failure path.
+`user_files_safe` **defaults to `true`**, check it is accurate on any new failure path.
 
 **One long operation at a time.** `AppState::begin_operation` returns an `OperationGuard`
 whose `Drop` clears the label, so an early return or a panic cannot leave the app
@@ -241,8 +241,8 @@ empty path, which would drop notebooks into AppData where nobody would find them
 
 **Two workspace locations, deliberately siblings:**
 
-- `Documents\SageDock` — the default workspace, created by setup (`AppPaths::workspace_dir`).
-- `Documents\SageDock Workspaces` — where workspaces the student creates live
+- `Documents\SageDock`, the default workspace, created by setup (`AppPaths::workspace_dir`).
+- `Documents\SageDock Workspaces`, where workspaces the student creates live
   (`home::workspaces_parent`). A sibling, never a child: nesting would make every
   workspace's files appear inside the default workspace's file browser and be counted twice
   in a backup.
@@ -258,7 +258,7 @@ src/App.tsx           ConfigProvider > TaskProvider > Root
 src/components/
   AppShell.tsx        nav + content, task bar, error banner, notice, close dialog
   NavRail.tsx         7-entry navigation pane, collapses to icons below 900px
-  Icon.tsx            Segoe Fluent Icons codepoint table — the ONE verified place
+  Icon.tsx            Segoe Fluent Icons codepoint table, the ONE verified place
   WorkspaceCard.tsx   NotebookRow.tsx  ChoiceDialog.tsx  ConfirmDialog.tsx  ErrorBanner.tsx
 src/pages/            Home (largest), Onboarding, Tools, Settings, Recovery,
                       Diagnostics, Help, About
@@ -289,7 +289,7 @@ interface AppConfig {
 ```
 
 Every field is `#[serde(default)]` in Rust, so a settings file from an older version loads
-cleanly. A missing or corrupt config is **never fatal** — it falls back to defaults and
+cleanly. A missing or corrupt config is **never fatal**, it falls back to defaults and
 logs a warning.
 
 ### The first-run introduction
@@ -302,7 +302,7 @@ logs a warning.
    fixture option flips it. Forget this and all ~50 UI tests fail at once.
 2. **When the config load fails, the fallback sets `onboarding_complete: true`.** Settings
    are unreachable in that state, so completion could not be saved and the introduction
-   would reappear forever — a first-run screen nobody can get past is worse than none.
+   would reappear forever, a first-run screen nobody can get past is worse than none.
 
 ---
 
@@ -329,7 +329,7 @@ Full claim-by-claim detail, each naming its implementing file, is in
 **Residual risks that are accepted, not overlooked:** the Jupyter token travels in a URL
 (that is Jupyter's browser auth mechanism), any local process running as the same user can
 reach the loopback port, backups are unencrypted ZIPs, and students execute arbitrary code
-by design — that is the product.
+by design, that is the product.
 
 ---
 
@@ -398,7 +398,7 @@ Read this section before debugging anything.
   back. **If an operation can outlive a screen, the backend owns it and the screen
   observes it.**
 - **A timeout must not be allowed to lie.** The old elevation path killed the outer,
-  unelevated PowerShell on timeout — which cannot stop the elevated `dism` it started — and
+  unelevated PowerShell on timeout, which cannot stop the elevated `dism` it started, and
   then reported the installation as stopped while it was still running. Quiet output is not
   evidence of a hang; check the actual process.
 - **`exit $p.ExitCode` from `Start-Process -PassThru` can exit 0 for a run that never
@@ -408,11 +408,11 @@ Read this section before debugging anything.
   running executable (`LNK1104`). Clippy, `cargo test` and `tauri build` must be sequential.
 - **Close SageDock before a release build.** A running `sagedock.exe` holds the linker
   lock. Windows Defender (`MsMpEng.exe`) also transiently locks a freshly linked binary,
-  producing `Access is denied (os error 5)` — pausing and retrying works.
+  producing `Access is denied (os error 5)`, pausing and retrying works.
 - **The same lock bites the installer, and there it is easy to misread.** WiX's `light`
   step writes a ~1.4 GB MSI, and Defender or the search indexer touching it mid-write fails
   the bundle with `os error 32` (a sharing violation) _after_ cargo has already succeeded.
-  So the exe is genuinely built and updated while `tauri build` reports failure — and an
+  So the exe is genuinely built and updated while `tauri build` reports failure, and an
   MSI may still be sitting there that opens fine and reads back the right ProductVersion
   and file count. That proves the **database**, not the embedded cabinet, which is where a
   truncated write would actually show up. Re-run the bundle instead of shipping it; cargo
@@ -442,8 +442,8 @@ Read this section before debugging anything.
   only by looking.
 - **A WebView2 download decision is synchronous and on the UI thread.**
   `DownloadEvent::Requested` has to set `destination` and return a verdict before it yields,
-  so anything asynchronous answers too late — including `tauri-plugin-dialog`'s callback
-  pickers — while its `blocking_*` pickers deadlock the event loop when called from there.
+  so anything asynchronous answers too late, including `tauri-plugin-dialog`'s callback
+  pickers, while its `blocking_*` pickers deadlock the event loop when called from there.
   `desktop.rs` uses `rfd`'s synchronous dialog for exactly that reason; do not "tidy" it
   back onto the plugin.
 - **`DownloadEvent` is `#[non_exhaustive]`**, so a match on it needs a wildcard arm or it
@@ -484,12 +484,12 @@ State these honestly rather than implying coverage that does not exist:
 
 ## 12. Suggested reading order
 
-1. [`src-tauri/src/lib.rs`](../src-tauri/src/lib.rs) — the command surface and startup.
-2. [`src/lib/commands.ts`](../src/lib/commands.ts) — the same surface, typed, from the frontend.
-3. [`src-tauri/src/error.rs`](../src-tauri/src/error.rs) — the error contract.
+1. [`src-tauri/src/lib.rs`](../src-tauri/src/lib.rs), the command surface and startup.
+2. [`src/lib/commands.ts`](../src/lib/commands.ts), the same surface, typed, from the frontend.
+3. [`src-tauri/src/error.rs`](../src-tauri/src/error.rs), the error contract.
 4. [`src-tauri/src/runtime/mod.rs`](../src-tauri/src/runtime/mod.rs) then `provision.rs`.
-5. [`src-tauri/src/jupyter/mod.rs`](../src-tauri/src/jupyter/mod.rs) — the security-critical part.
-6. [`src-tauri/src/state.rs`](../src-tauri/src/state.rs) — concurrency and the operation lock.
-7. [`src-tauri/src/backup.rs`](../src-tauri/src/backup.rs) — the largest module, handling user data.
-8. [`../docs/reviewer/RESTART-LOGIC.md`](../docs/reviewer/RESTART-LOGIC.md) — one worked
+5. [`src-tauri/src/jupyter/mod.rs`](../src-tauri/src/jupyter/mod.rs), the security-critical part.
+6. [`src-tauri/src/state.rs`](../src-tauri/src/state.rs), concurrency and the operation lock.
+7. [`src-tauri/src/backup.rs`](../src-tauri/src/backup.rs), the largest module, handling user data.
+8. [`../docs/reviewer/RESTART-LOGIC.md`](../docs/reviewer/RESTART-LOGIC.md), one worked
    example through a real bug and two rounds of correction. The best single thing to audit.

@@ -55,7 +55,7 @@ function StepRow({ step }: { step: SetupStep }) {
  * The live setup view, usable on any screen.
  *
  * Everything here is read from the backend snapshot. Nothing is inferred from how long a
- * promise has been pending, and nothing is invented to fill a gap — an unmeasurable stage
+ * promise has been pending, and nothing is invented to fill a gap, an unmeasurable stage
  * shows an indeterminate bar with a real explanation rather than a fabricated percentage.
  */
 export function SetupProgress({

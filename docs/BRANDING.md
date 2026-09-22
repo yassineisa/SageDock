@@ -14,6 +14,6 @@ foreach ($iconFile in $iconFiles) {
 }
 ```
 
-App-authored UI copy uses ordinary sentence punctuation without em dashes, including setup explanations and backend status/error messages. Source comments and third-party diagnostic output are not UI copy.
+Ordinary sentence punctuation is used without em dashes. The rule began with app-authored UI copy, including setup explanations and backend status/error messages, and now covers the whole repository: source comments, documentation, and commit messages. Use a comma, a colon, or a full stop, and prefer rewriting over a comma splice. Third-party diagnostic output is quoted as it arrives and is not rewritten.
 
 These source assets take effect in newly built applications. An existing installed executable or installer must be rebuilt to contain the new icon; Windows may also cache shortcut icons.

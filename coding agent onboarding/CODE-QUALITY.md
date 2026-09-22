@@ -231,7 +231,7 @@ became unused (Knip and `-D warnings` would otherwise flag them). Help keeps a
 **There was no vector source.** The mark existed only as raster: `128x128.png`,
 `128x128@2x.png`, `32x32.png`, `icon.png`, `icon.ico`, `icon.icns`. The instruction to "edit
 the vector source directly" could not be followed as written, so one was authored:
-**`src-tauri/icons/icon.svg`** now holds the canonical geometry — two open rings on a
+**`src-tauri/icons/icon.svg`** now holds the canonical geometry, two open rings on a
 diagonal, each with a concentric disc, each ring's gap facing the other.
 
 Geometry, proportions, and silhouette are unchanged. Only the palette moved: cyan `#2DC9DE`
@@ -244,7 +244,7 @@ backgrounds. Both chosen tones clear 3:1 on light and dark. Flat fills only.
 
 **The raster derivatives are NOT regenerated and remain cyan/amber.** No rasterizer is
 available on this machine: `magick`, `inkscape`, and `rsvg-convert` are all absent. Note
-that `convert` _does_ resolve on PATH, to `C:\WINDOWS\system32\convert` — the Windows
+that `convert` _does_ resolve on PATH, to `C:\WINDOWS\system32\convert`, the Windows
 FAT-to-NTFS filesystem converter, not ImageMagick. It must not be invoked. `tauri.conf.json`
 still points the installer icon at the old PNG/ICO/ICNS files, so **the next installer will
 ship the old cyan icon** until someone runs, with ImageMagick installed:
@@ -291,7 +291,7 @@ the decision uses observed capability rather than registry flags:
 
 - A restart **blocks** SageDock only when setup recorded one itself
   (`PersistedSetupState.awaiting_restart`), or when `wsl.exe` answers while the Host Compute
-  Service is absent — precisely the state that produced `HCS_E_SERVICE_NOT_AVAILABLE`. Only
+  Service is absent, precisely the state that produced `HCS_E_SERVICE_NOT_AVAILABLE`. Only
   these report `Warning`.
 - Windows servicing pending (CBS or Windows Update) reports **`Info`** with honest wording:
   worth doing, does not stop SageDock.
@@ -309,7 +309,7 @@ result.
 
 `run_system_check` now takes `setup_awaiting_restart: bool`, supplied by `desktop.rs` and
 `runtime/health.rs` from persisted setup state. `diagnostic_report` additionally emits
-`overall`, which was previously computed and discarded — meaning `HealthState::RestartRequired`
+`overall`, which was previously computed and discarded, meaning `HealthState::RestartRequired`
 had no UI consumer at all before this change.
 
 ### Changed and deleted files
@@ -330,7 +330,7 @@ logic; `LICENSE`; `THIRD-PARTY-NOTICES.md`; `README.md`; package metadata; the r
 
 ### Added and updated tests
 
-**Rust, `system/reboot.rs`** — ten tests, up from two, eight of them against the pure `interpret`, split by the three
+**Rust, `system/reboot.rs`**, ten tests, up from two, eight of them against the pure `interpret`, split by the three
 cases asked for:
 
 - _False positives:_ a third-party scheduled file rename is `Info`; a pending Windows update
@@ -341,10 +341,10 @@ cases asked for:
   "No restart is needed."
 - _Predicate:_ `servicing_pending()` ignores file renames and honours CBS/Windows Update.
 
-**Rust, `system/types.rs`** — `an_advisory_pending_reboot_leaves_the_overall_state_healthy`
+**Rust, `system/types.rs`**, `an_advisory_pending_reboot_leaves_the_overall_state_healthy`
 guards the rollup, which previously escalated on any non-`Info` severity.
 
-**Playwright, `tests/ui/workspace.spec.ts`** — the footer test was replaced by
+**Playwright, `tests/ui/workspace.spec.ts`**, the footer test was replaced by
 `attribution appears only on About, not on every screen`, which asserts no `contentinfo`
 landmark and no creator credit on `/`, `/#/settings`, `/#/recovery`, and `/#/help`, then
 checks both are present on `/#/about`. The keyboard test now reaches About through the
@@ -353,7 +353,7 @@ test asserts the footer landmark is absent.
 
 ### Checks run and checks deferred
 
-> **Superseded — read this before trusting the list below.** This section records the state
+> **Superseded, read this before trusting the list below.** This section records the state
 > at the end of that one task, when an explicit instruction forbade compiling anything.
 > Everything listed here as deferred has since been executed: see
 > [HOME-LAUNCH-AUDIT.md](HOME-LAUNCH-AUDIT.md) and [reviewer/TESTING.md](../docs/reviewer/TESTING.md)
@@ -374,10 +374,10 @@ test asserts the footer landmark is absent.
 
 **Deferred because compilation was prohibited:**
 
-- `cargo check`, `cargo clippy -D warnings`, `cargo test` — so **none of the new Rust tests
+- `cargo check`, `cargo clippy -D warnings`, `cargo test`, so **none of the new Rust tests
   have been executed**, and type errors or dead-code warnings remain possible.
-- `npm run build` and `npm run typecheck:tools` — no TypeScript type checking has run.
-- `npm run test:ui` — no Playwright test has run, so the new and updated assertions are
+- `npm run build` and `npm run typecheck:tools`, no TypeScript type checking has run.
+- `npm run test:ui`, no Playwright test has run, so the new and updated assertions are
   unverified and the `docs/qa/` screenshots are stale (they still show the footer and the
   cyan logo).
 - Any visual inspection of the recoloured logo, the About page, or the footer-free layout.
@@ -399,7 +399,7 @@ test asserts the footer landmark is absent.
   contrast calculation settles.
 - The root cause is proven on _this_ machine. A different machine showing the warning could in
   principle have a genuine CBS or Windows Update indicator instead, which the new logic
-  reports as `Info` rather than a blocker — correct, but it means the symptom can have more
+  reports as `Info` rather than a blocker, correct, but it means the symptom can have more
   than one source.
 
 ## Remaining release validation
@@ -416,7 +416,7 @@ the interface running in real WebView2 rather than mocked Edge, both remain unte
 ## 1.3.1 release build
 
 Built 18 September 2026. This is the first build in which the **full gate was executed
-against the attribution/logo/About/restart change set** — the section above recorded those
+against the attribution/logo/About/restart change set**, the section above recorded those
 changes as unverified because compilation was prohibited at the time. Results at 1.3.1:
 
 - `lint` (Knip) and `lint:rust` (Clippy, `-D warnings`): clean.

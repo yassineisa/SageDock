@@ -9,7 +9,7 @@ import { PixelChase } from "./PixelChase";
  * label, a subtle fill for the selected item, and a short accent bar on its leading edge.
  *
  * Each link carries an explicit `aria-label`. Below 900px the pane collapses to icons only,
- * and without the label the accessible name would disappear with it — leaving an icon-only
+ * and without the label the accessible name would disappear with it, leaving an icon-only
  * navigation that no screen reader could describe at the app's minimum window size.
  */
 const LINKS: [path: string, label: string, icon: IconName][] = [

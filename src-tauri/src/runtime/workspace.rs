@@ -21,13 +21,13 @@ pub fn default_workspace_dir(documents_dir: &Path) -> PathBuf {
 ///
 /// A single lookup is not good enough here, and this is not hypothetical: on a machine
 /// whose Documents is redirected into OneDrive, the known-folder API this app's framework
-/// uses returned an **empty** path, which silently sent the workspace into AppData — where
+/// uses returned an **empty** path, which silently sent the workspace into AppData, where
 /// no user would ever find their notebooks, and where an app-data reset could take them
 /// with it. The registry held the correct OneDrive path the whole time.
 ///
 /// Order of preference:
 /// 1. The known-folder path, when it's non-empty and actually exists.
-/// 2. `User Shell Folders\Personal` — authoritative for redirected folders (OneDrive,
+/// 2. `User Shell Folders\Personal`, authoritative for redirected folders (OneDrive,
 ///    another drive, a roaming profile). Stored unexpanded, so `%USERPROFILE%`-style
 ///    placeholders are expanded here.
 /// 3. `%USERPROFILE%\Documents`, the conventional layout.
@@ -94,7 +94,7 @@ fn expand_env_placeholders(input: &str) -> String {
                 rest = &after[end + 1..];
             }
             None => {
-                // Unpaired '%' — emit the remainder verbatim.
+                // Unpaired '%', emit the remainder verbatim.
                 out.push('%');
                 out.push_str(after);
                 return out;

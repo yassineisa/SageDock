@@ -88,7 +88,7 @@ is the boundary that stops a compromised renderer from reading arbitrary files.
   single argument rather than through a shell.
 - Downloads from the built-in browser, also added in 1.4.3, keep the rule as well. The file
   goes wherever the student picks in a native Save As dialog shown from Rust, and the path
-  it landed at is recorded in [`downloads.rs`](../../src-tauri/src/downloads.rs) — a record
+  it landed at is recorded in [`downloads.rs`](../../src-tauri/src/downloads.rs), a record
   of what this application downloaded, never a scan of the disk. Home lists those files
   under an opaque `tracked:<hash-of-path>` key rather than their location, and
   `library::resolve_download` only ever matches such a key back against that recorded list,

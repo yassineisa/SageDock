@@ -88,7 +88,7 @@ impl RunningServer {
 ///
 /// There is an unavoidable gap between releasing the port here and Jupyter binding it, so
 /// the caller treats "Jupyter never became ready" as a retryable condition rather than
-/// assuming this port is still free. Fixed ports are avoided entirely — they collide with
+/// assuming this port is still free. Fixed ports are avoided entirely, they collide with
 /// whatever else the user is running.
 fn find_free_port() -> AppResult<u16> {
     let listener = TcpListener::bind("127.0.0.1:0").map_err(|err| {
@@ -352,7 +352,7 @@ mod tests {
         assert!(a.chars().all(|c| c.is_ascii_hexdigit()));
     }
 
-    /// Every URL the app builds must stay on loopback — a regression here would expose a
+    /// Every URL the app builds must stay on loopback, a regression here would expose a
     /// user's notebooks to their network.
     #[test]
     fn urls_are_always_loopback() {

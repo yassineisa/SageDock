@@ -11,7 +11,7 @@
 //!    one command line for the Linux shell, which expanded `$HOME` and swallowed
 //!    backslashes in a test argument. With `--exec`, every argument arrived byte-for-byte.
 //!    Using `--` means any path or script containing `$`, a quote, or a backslash is
-//!    silently rewritten — or interpreted as shell syntax.
+//!    silently rewritten, or interpreted as shell syntax.
 //! 2. **No parsing of localized text to make decisions.** `wsl.exe` output is localized and
 //!    has no machine-readable mode, so decisions use exit codes, and distro enumeration
 //!    reads the registry instead of `wsl --list`.
@@ -55,7 +55,7 @@ const LXSS_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Lxss";
 
 // --- availability ----------------------------------------------------------------------
 
-/// Whether `wsl.exe` responds successfully. Uses only the exit code — see module docs.
+/// Whether `wsl.exe` responds successfully. Uses only the exit code, see module docs.
 ///
 /// Deliberately *not* proof that WSL 2 can run: see `vm_platform_present`.
 pub fn is_available() -> bool {
@@ -65,14 +65,14 @@ pub fn is_available() -> bool {
     )
 }
 
-/// Whether the Windows Host Compute Service — the component WSL 2 uses to build its
-/// lightweight virtual machine — exists on this system.
+/// Whether the Windows Host Compute Service, the component WSL 2 uses to build its
+/// lightweight virtual machine, exists on this system.
 ///
 /// `wsl.exe --status` is not a substitute, and this function exists because trusting it
 /// cost a real installation: on a PC where the Windows features were switched on but had
 /// not taken effect yet, `--status` answered successfully, setup concluded Windows was
-/// ready, skipped the whole components-and-restart step, and then died at `--import` —
-/// the first operation that actually needs a virtual machine — with
+/// ready, skipped the whole components-and-restart step, and then died at `--import`,
+/// the first operation that actually needs a virtual machine, with
 /// `HCS_E_SERVICE_NOT_AVAILABLE` and an exit code of `-1` that said nothing.
 ///
 /// `vmcompute` is registered by the `VirtualMachinePlatform` feature, so its absence is a
@@ -93,7 +93,7 @@ pub const RESTART_REQUIRED_CODE: &str = "WINDOWS_RESTART_REQUIRED";
 /// This is the one place that looks at `wsl.exe` output, and it is a deliberate exception
 /// to the no-text-parsing rule in the module docs: these are stable error *identifiers*,
 /// not the localized prose around them, and the process exit code for this failure is
-/// `-1`, which distinguishes nothing. Matching is kept narrow on purpose — a generic
+/// `-1`, which distinguishes nothing. Matching is kept narrow on purpose, a generic
 /// `CreateVm` failure (out of disk, for instance) must not be reported as "please
 /// restart", which would send the user round a loop that could never fix it.
 const RESTART_SIGNATURES: &[&str] = &[
@@ -145,7 +145,7 @@ pub fn distro_exists(name: &str) -> bool {
 /// Whether SageDock's environment is running right now.
 ///
 /// `--quiet` prints bare distribution names: no header, no decoration, no localized prose.
-/// That is what makes comparing it safe under the no-text-parsing rule above — a
+/// That is what makes comparing it safe under the no-text-parsing rule above, a
 /// distribution name is neither localized nor prose, and it is the same string this module
 /// passed to `--import`. The exit code cannot answer this on its own, since `wsl.exe`
 /// reports failure both when nothing is running and when something went wrong.
@@ -194,7 +194,7 @@ pub enum ElevationEvent {
     AwaitingConsent,
     /// Permission was granted and the elevated helper is doing the work.
     HelperRunning,
-    /// The helper is still alive. Liveness only — never progress.
+    /// The helper is still alive. Liveness only, never progress.
     Heartbeat,
 }
 
@@ -213,7 +213,7 @@ struct ElevatedReport {
 }
 
 /// How long to keep waiting once the helper process is **gone** and no result appeared.
-/// Short, because a vanished process is a settled fact — this only covers the moment
+/// Short, because a vanished process is a settled fact, this only covers the moment
 /// between the process exiting and its file becoming readable.
 const RESULT_GRACE: std::time::Duration = std::time::Duration::from_secs(10);
 
@@ -225,14 +225,14 @@ const CONSENT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600)
 /// Enables the Windows features WSL needs and installs WSL, behind one UAC prompt.
 ///
 /// This is the only operation SageDock performs with administrator rights, and it runs as a
-/// separate short-lived elevated process — the app itself stays unelevated.
+/// separate short-lived elevated process, the app itself stays unelevated.
 ///
 /// ## Why this supervises rather than blocks
 ///
 /// The previous implementation ran `Start-Process -Verb RunAs -Wait` inside a hidden shell
 /// and simply waited up to thirty minutes for an exit code. That produced the reported
 /// stall: from the moment the UAC prompt appeared, the app emitted nothing at all, so an
-/// unanswered prompt and a running installation looked identical — a frozen window. Worse,
+/// unanswered prompt and a running installation looked identical, a frozen window. Worse,
 /// the timeout killed the *outer* shell, which an unelevated process cannot use to stop the
 /// elevated `dism` it started; the installation carried on invisibly while the app reported
 /// that it had stopped.
@@ -240,8 +240,8 @@ const CONSENT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600)
 /// So the launcher no longer waits. It returns as soon as consent is settled, handing back
 /// the helper's process id, and this function supervises from there:
 ///
-/// - Before the id arrives, the user is answering the prompt — `AwaitingConsent`.
-/// - After it arrives, Windows is working — `HelperRunning`, with liveness checked against
+/// - Before the id arrives, the user is answering the prompt, `AwaitingConsent`.
+/// - After it arrives, Windows is working, `HelperRunning`, with liveness checked against
 ///   the real process rather than inferred from silence. `dism` is routinely quiet for
 ///   minutes at a time, so quiet output is never treated as a hang.
 /// - Nothing is ever killed. A helper that outlives our patience is reported as still
@@ -384,7 +384,7 @@ fn parse_helper_pid(output: &str) -> Option<u32> {
 /// The code the elevated helper runs.
 ///
 /// `dism` is invoked per feature so a failure names the feature that failed, and the whole
-/// thing is wrapped so the result file is written on every path — including an unexpected
+/// thing is wrapped so the result file is written on every path, including an unexpected
 /// exception. A helper that dies without writing is detectable (the supervisor sees the
 /// process disappear with no report) but not diagnosable, so it is worth the `finally`.
 fn elevated_script(operation_id: &str, result_path: &Path) -> String {
@@ -526,7 +526,7 @@ pub fn unregister_distro() -> AppResult<()> {
 ///
 /// Deliberately `--terminate <distro>` and never `wsl --shutdown`: the latter stops every
 /// distro on the machine, which would kill unrelated work belonging to someone who uses
-/// WSL for their own projects. Best-effort — a failure here only means it wasn't running.
+/// WSL for their own projects. Best-effort, a failure here only means it wasn't running.
 pub fn terminate_distro() {
     match run_hidden("wsl.exe", &["--terminate", distro_name()]) {
         Ok(Some(result)) => {
@@ -702,7 +702,7 @@ mod tests {
     #[test]
     fn any_status_other_than_success_is_a_failure_rather_than_a_default_to_completed() {
         // The old code mapped a missing exit code to failure but a null `ExitCode` from
-        // `Start-Process -PassThru` to `exit 0` — reporting success for a run that never
+        // `Start-Process -PassThru` to `exit 0`, reporting success for a run that never
         // happened. An unrecognised status must never fall through to success.
         for status in ["failed", "", "unknown", "Completed"] {
             assert_eq!(
@@ -783,7 +783,7 @@ mod tests {
     }
 
     /// The exact failure seen on a test PC: Windows reported WSL as available, the import
-    /// ran anyway, and this identifier was the only usable evidence in the output — the
+    /// ran anyway, and this identifier was the only usable evidence in the output, the
     /// exit code was `-1`.
     #[test]
     fn the_host_compute_service_error_is_recognised_as_needing_a_restart() {

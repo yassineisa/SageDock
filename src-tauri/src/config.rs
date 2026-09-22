@@ -2,7 +2,7 @@
 //!
 //! Settings are persisted as a single JSON file under the app's config directory
 //! (Tauri's per-OS app config path, not a hardcoded path). A missing or corrupt
-//! config file is never treated as fatal — SageDock falls back to defaults and logs
+//! config file is never treated as fatal, SageDock falls back to defaults and logs
 //! a warning, since losing a settings file should never block the user from getting
 //! into the app. Writes are atomic (write to a temp file, then rename) so a crash or
 //! power loss mid-save can't leave a half-written config behind.
@@ -36,7 +36,7 @@ pub struct AppConfig {
     /// Whether the first-run introduction has been finished or skipped.
     ///
     /// Every new field here is `#[serde(default)]`, so a settings file written by an older
-    /// SageDock loads without this key and reads as `false` — which means an existing
+    /// SageDock loads without this key and reads as `false`, which means an existing
     /// installation shows the introduction once after updating. That is deliberate: the
     /// alternative is defaulting to `true`, which would hide a first-run explanation from
     /// the one group of users who have never seen it either.

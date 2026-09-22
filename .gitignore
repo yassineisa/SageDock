@@ -109,7 +109,7 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
-# docs/qa/*.png is intentional screenshot evidence — tracked on purpose.
+# docs/qa/*.png is intentional screenshot evidence, tracked on purpose.
 
 # ─── Logs ──────────────────────────────────────────────────────────
 logs/

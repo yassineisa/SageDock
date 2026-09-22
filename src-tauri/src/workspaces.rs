@@ -9,7 +9,7 @@
 //!
 //! The list itself lives in one small JSON file next to the app's other state, written
 //! atomically. A corrupt or missing file degrades to "no workspaces recorded" rather than
-//! failing to launch — losing the *list* must never look like losing the *work*.
+//! failing to launch, losing the *list* must never look like losing the *work*.
 
 use std::path::{Path, PathBuf};
 
@@ -54,7 +54,7 @@ pub struct WorkspaceView {
     pub path: String,
     pub last_opened: Option<u64>,
     pub is_active: bool,
-    /// `available`, `missing`, or `unreadable` — never a bare boolean, because "the folder
+    /// `available`, `missing`, or `unreadable`, never a bare boolean, because "the folder
     /// is gone" and "the folder is there but I can't read it" need different advice.
     pub status: &'static str,
 }
@@ -234,7 +234,7 @@ fn new_id() -> String {
 /// Compares two paths for "the same folder", tolerating case and separator differences.
 ///
 /// Canonicalization is preferred because it resolves `..`, short 8.3 names, and mapped
-/// drives, but it only works on a path that currently exists — so a missing folder falls
+/// drives, but it only works on a path that currently exists, so a missing folder falls
 /// back to a case-insensitive comparison rather than being treated as a different one.
 pub fn same_path(a: &Path, b: &Path) -> bool {
     match (a.canonicalize(), b.canonicalize()) {
@@ -368,7 +368,7 @@ pub fn add_existing(store: &mut WorkspaceStore, path: &Path) -> AppResult<Worksp
 /// Renames both the folder on disk and the entry, so the card and File Explorer agree.
 ///
 /// Refuses rather than guessing when the destination is taken. The caller is responsible
-/// for making sure no notebook server is serving this folder — renaming underneath a
+/// for making sure no notebook server is serving this folder, renaming underneath a
 /// running server would strand it on a path that no longer exists.
 pub fn rename(store: &mut WorkspaceStore, id: &str, new_name: &str) -> AppResult<WorkspaceRecord> {
     let new_name = validate_name(new_name)?;

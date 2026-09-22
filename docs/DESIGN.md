@@ -4,7 +4,7 @@ A Windows desktop application built on **Metro's principles**, using **Windows 1
 conventions for the specifics. Implemented in
 [`src/styles/theme.css`](../src/styles/theme.css) (tokens, type, base elements) and
 [`src/styles/layout.css`](../src/styles/layout.css) (structure). Components carry class
-names only — no inline styling and no page-specific overrides.
+names only, no inline styling and no page-specific overrides.
 
 ## Foundation
 
@@ -15,15 +15,15 @@ Swiss graphic design and the clarity of road signage.
 
 Windows 11 supplies the measurements, so these are specifications rather than taste:
 
-| Decision      | Value                                                   | Source                                                                           |
-| ------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Font          | Segoe UI Variable                                       | Windows default system font                                                      |
-| Weights       | Regular 400, Semibold 600                               | Bold and Italic are **not** in the Windows type ramp — use Semibold for emphasis |
-| Casing        | Sentence case, including titles                         | Windows 11 typography guidance                                                   |
-| Minimum sizes | 14px Semibold, 12px Regular                             | Below this is illegible in some languages                                        |
-| Alignment     | Left                                                    | Centre only for text under an icon                                               |
-| Corner radius | **4px** persistent controls, **8px** transient surfaces | Windows 11 geometry: Button/TextBox/ListView vs ContentDialog/Flyout             |
-| Icons         | Segoe Fluent Icons                                      | Ships with Windows; Segoe MDL2 Assets is the Windows 10 fallback                 |
+| Decision      | Value                                                   | Source                                                                          |
+| ------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Font          | Segoe UI Variable                                       | Windows default system font                                                     |
+| Weights       | Regular 400, Semibold 600                               | Bold and Italic are **not** in the Windows type ramp; use Semibold for emphasis |
+| Casing        | Sentence case, including titles                         | Windows 11 typography guidance                                                  |
+| Minimum sizes | 14px Semibold, 12px Regular                             | Below this is illegible in some languages                                       |
+| Alignment     | Left                                                    | Centre only for text under an icon                                              |
+| Corner radius | **4px** persistent controls, **8px** transient surfaces | Windows 11 geometry: Button/TextBox/ListView vs ContentDialog/Flyout            |
+| Icons         | Segoe Fluent Icons                                      | Ships with Windows; Segoe MDL2 Assets is the Windows 10 fallback                |
 
 ## Type ramp
 
@@ -40,7 +40,7 @@ title         28 / 36   600   (Display face)
 ```
 
 `h1` is Title, `h2` is Subtitle, `h3` is Body Strong. Page titles are one word where
-possible — "Home", "Settings", "Diagnostics" — with a single explanatory line beneath.
+possible ("Home", "Settings", "Diagnostics"), with a single explanatory line beneath.
 
 ## Colour
 
@@ -69,7 +69,7 @@ near-black label on a light pink fill at roughly 3.8:1, under the 4.5:1 minimum.
 
 **Status colours are separate from the accent**: `--ok`, `--caution`, `--danger`. An accent
 that also meant "healthy" could not sit next to a warning without the colour saying two
-things at once. Status is **never colour alone** — every state also carries a word and an
+things at once. Status is **never colour alone**: every state also carries a word and an
 icon, per the accessibility requirements in `app.md` §27.
 
 **The logo is a filled tile, which is what resolves its contrast problem.** The mark is one
@@ -96,7 +96,7 @@ A 4px grid: `--sp-1` 4 through `--sp-12` 48. Gaps and padding come from tokens, 
 arbitrary values.
 
 Elevation is almost absent. Cards get a 1px stroke and `--elev-card` (a 1px hairline
-shadow) to lift them off the page; **only transient surfaces** — dialogs — use
+shadow) to lift them off the page. **Only transient surfaces** (dialogs) use
 `--elev-flyout`. There are no glass effects, no gradients, and no blur. Translucency was
 declined outright: WebView2 has no reliable Mica or Acrylic backdrop, and the brief calls
 for restraint plus an opaque fallback, which means opaque is the honest choice.
@@ -107,7 +107,7 @@ Short and explanatory. `--motion-fast` 90ms, `--motion-normal` 150ms.
 
 **Filled controls are deliberately not transitioned.** Animating a button's background while
 its text colour changes instantly means a theme switch leaves white labels on a still-white
-button for the whole transition — unreadable. Motion is applied only where the default
+button for the whole transition, which is unreadable. Motion is applied only where the default
 background is transparent (navigation items, list rows), so there is nothing to animate away
 from. `prefers-reduced-motion` disables all of it.
 
@@ -119,7 +119,7 @@ bundles no font, adds nothing to the installer, needs no `font-src` in the CSP, 
 no third-party licence obligation.
 
 Codepoints live in one verified table in that component. They are private-use characters, so
-a wrong one renders as an empty box rather than failing loudly — keeping them in one place is
+a wrong one renders as an empty box rather than failing loudly. Keeping them in one place is
 what stops that spreading. Every icon is `aria-hidden`, and every control carries its own
 visible text or `aria-label`; that also keeps glyphs out of accessible names, which the UI
 tests match on exactly.
@@ -140,7 +140,7 @@ the complete kit. Four distinct silhouettes, so the cards are not four copies of
 
 - **Navigation pane** on the left, 240px, following the Windows NavigationView pattern: icon
   plus label, subtle fill on the selected item, and a 3px accent bar on its leading edge.
-  Below 900px it collapses to a 64px icon rail — each link keeps an explicit `aria-label`,
+  Below 900px it collapses to a 64px icon rail, each link keeps an explicit `aria-label`,
   because `display:none` on the label would otherwise strip the accessible name at exactly
   the minimum window size.
 - **Command bar** beneath the page title for primary actions.
@@ -175,9 +175,11 @@ the complete kit. Four distinct silhouettes, so the cards are not four copies of
 Plain and instrumental. No slogans, no marketing headlines, no motivational copy. WSL,
 terminals, ports, and package managers belong in Diagnostics, not in primary workflows.
 
-**No em dashes in text the user reads.** Use a comma, a full stop, or a rewrite. They are
-still fine in source comments, which are not part of the interface. Check with a search for
-`—` across `src/` before shipping: the only matches should be in comments.
+**No em dashes anywhere in the repository.** Use a comma, a colon, a full stop, or a
+rewrite. The rule began with text the user reads and now covers source comments,
+documentation, and commit messages too, so that the repository reads in one voice. Check
+before shipping by searching for the character `U+2014`, written here as an escape so this
+line does not itself trip the search. There should be no matches.
 
 ## Extending it
 
@@ -186,8 +188,8 @@ still fine in source comments, which are not part of the interface. Check with a
 3. Accent as a fill → `--accent` with `--on-accent`. Accent as an icon, marker, or label →
    `--accent-text`.
 4. Any new state needs a word and an icon, not only a colour.
-5. Both themes, every time — and check a filled control immediately after switching theme,
-   not just in a settled state.
+5. Both themes, every time. Check a filled control immediately after switching theme, not
+   just in a settled state.
 6. New icons go in `Icon.tsx` with a codepoint verified against Microsoft's font listing.
 
 Run `npm run test:ui` after any layout change (25 tests). It asserts no horizontal overflow at

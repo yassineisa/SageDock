@@ -1,4 +1,4 @@
-/* SageDock layout — a Windows desktop application informed by Metro.
+/* SageDock layout, a Windows desktop application informed by Metro.
  *
  * Structure: a compact navigation pane on the left, a page header acting as a command bar,
  * and content in cards on a 4px grid. Everything is flat and authentically digital: no
@@ -77,7 +77,7 @@
   height: 32px;
   color: var(--accent-text);
 }
-.pixel-letter {
+.pixel-bee {
   width: 20px;
   height: 30px;
   color: var(--text-2);
@@ -123,7 +123,7 @@
     width: 20px;
     height: 16px;
   }
-  .pixel-letter {
+  .pixel-bee {
     width: 12px;
     height: 18px;
   }
@@ -131,7 +131,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pixel-chase-runner,
   .pixel-chase-direction,
-  .pixel-letter,
+  .pixel-bee,
   .pixel-paws {
     animation: none;
   }
@@ -309,7 +309,7 @@
 }
 /* Deliberately not transitioned. Animating a filled control's background while its text
    colour changes instantly means that switching theme leaves white labels on a still-white
-   button for the length of the transition — unreadable, and not only in a screenshot.
+   button for the length of the transition, unreadable, and not only in a screenshot.
    Motion stays on surfaces whose default background is transparent, where there is
    nothing to animate away from. */
 .btn:hover:not(:disabled) {
@@ -510,8 +510,8 @@
 .ws-title h3 {
   min-width: 0;
 }
-/* Deliberately matched to .ws-meta below — the same 12px and the same muted colour as
-   "Opened today" — so the pencil reads as quiet metadata beside the name, not as a second
+/* Deliberately matched to .ws-meta below, the same 12px and the same muted colour as
+   "Opened today", so the pencil reads as quiet metadata beside the name, not as a second
    heading competing with it. */
 .ws-edit {
   display: inline-grid;
@@ -647,8 +647,8 @@ label.field {
   border-bottom-color: var(--accent-text);
   background: var(--layer);
 }
-/* The icon sits inside the field, so the container must establish the positioning context
-   — otherwise it anchors to the page and floats away from its input. */
+/* The icon sits inside the field, so the container must establish the positioning context,
+   otherwise it anchors to the page and floats away from its input. */
 .search-field {
   position: relative;
   display: flex;
@@ -879,7 +879,7 @@ progress::-webkit-progress-value {
 
 /* ============ setup progress ============ */
 /* Built from the existing status tokens rather than new colours, so both themes and the
-   "never colour alone" rule carry over unchanged — every state here is also a word. */
+   "never colour alone" rule carry over unchanged, every state here is also a word. */
 .setup-progress {
   margin: var(--sp-4) 0;
 }
@@ -1245,7 +1245,7 @@ progress::-webkit-progress-value {
 /* Selection has to survive hover. `:hover:not(:disabled)` scores (0,3,1) against a bare
    attribute selector's (0,2,1), so without the second selector here, pointing at the
    option you already chose repaints it as an unselected one and hides which setting is
-   active — on the one control whose entire purpose is showing that. */
+   active, on the one control whose entire purpose is showing that. */
 .segmented button[aria-pressed="true"],
 .segmented button[aria-pressed="true"]:hover:not(:disabled) {
   background: var(--accent);

@@ -3,7 +3,7 @@ import { formatLastOpened, type WorkspaceView } from "../lib/commands";
 import { Icon } from "./Icon";
 
 /**
- * One workspace — an ordinary Windows folder for a course.
+ * One workspace, an ordinary Windows folder for a course.
  *
  * The card shows the real path and offers to open it in File Explorer, because nothing
  * here is hidden inside the app. Availability is never signalled by colour alone: a folder

@@ -17,12 +17,12 @@ tests, which is why the default run reports 235 passed and 7 ignored. Total acro
 three suites: **311**.
 
 The setup-reliability work added 26 Rust tests and 14 UI tests. What they do and do not
-establish — in particular that **the elevated install path has never been executed** — is
+establish, in particular that **the elevated install path has never been executed**, is
 set out in [SETUP-RELIABILITY-HANDOFF.md](../SETUP-RELIABILITY-HANDOFF.md).
 
 The integration row is the one to read carefully. It last ran at source version 1.2.0.
-Everything added since — the compiler installation test, the JupyterLab launcher test, and
-every behaviour introduced in 1.3.x and 1.4.x — has **never been executed against a real
+Everything added since (the compiler installation test, the JupyterLab launcher test, and
+every behaviour introduced in 1.3.x and 1.4.x) has **never been executed against a real
 WSL distribution**. Treat those features as implemented-and-unit-tested but not
 demonstrated end to end.
 
@@ -44,8 +44,8 @@ touching the registry. When reviewing a check, read `interpret` for the logic an
 The same split governs the two modules added in 1.4.3. `browsers.rs` unit-tests
 `executable_from_command`, the pure parser that pulls a program out of a registered shell
 command, and does not test the registry enumeration around it. `downloads.rs` unit-tests
-the record's own behaviour — ordering, de-duplication, the cap, pruning files that have
-gone, and refusing to overwrite a corrupt or newer-format list — and does not test the
+the record's own behaviour (ordering, de-duplication, the cap, pruning files that have
+gone, and refusing to overwrite a corrupt or newer-format list), and does not test the
 WebView2 download event that feeds it.
 
 Test counts by module, highest first:
@@ -65,13 +65,13 @@ are the three modules that can lose a student's work or leave an installation ha
 
 `setup.rs` and the elevation half of `runtime/wsl.rs` joined them in the setup-reliability
 work, for the same reason: between them they decide whether an installation can be left in
-a state nobody can get out of. Note the split in what those 18 `wsl.rs` tests cover —
+a state nobody can get out of. Note the split in what those 18 `wsl.rs` tests cover,
 report parsing, operation-id matching, process-id parsing and PowerShell quoting are all
 pure and genuinely tested; `install_wsl_elevated` itself is the untested boundary, and it
 has never run.
 
 `scientific.rs` follows the same gather/interpret discipline. Its tests all exercise pure
-functions — `state_of`, `missing_packages`, `classify_apt_failure`, `assemble` — against
+functions (`state_of`, `missing_packages`, `classify_apt_failure`, `assemble`) against
 synthetic component results. None of them installs anything or touches WSL. That is a
 deliberate boundary, and it is exactly why the integration test matters: the unit tests
 prove the _decisions_ are right, not that a compiler was ever installed.
@@ -84,24 +84,24 @@ installation and the staged runtime image, so they must never run as part of a n
 
 Six live in [`src-tauri/src/e2e.rs`](../../src-tauri/src/e2e.rs):
 
-1. `installs_a_package_and_opens_a_sage_notebook` — full fresh installation through to an
+1. `installs_a_package_and_opens_a_sage_notebook`, full fresh installation through to an
    executing notebook. Also checks that Home's launcher serves JupyterLab's landing page
    from the default folder, reuses an existing server, and creates no files.
-2. `installed_environment_reports_sage_and_kernels` — SageMath version and both kernel
+2. `installed_environment_reports_sage_and_kernels`, SageMath version and both kernel
    registrations.
-3. `workspace_paths_with_shell_characters_survive` — the regression test for the
+3. `workspace_paths_with_shell_characters_survive`, the regression test for the
    no-shell-concatenation rule.
-4. `windows_workspace_is_visible_inside_linux` — the Windows-to-Linux path bridge.
-5. `compilers_install_and_really_build_a_program` — installs the C/C++ compiler for real,
+4. `windows_workspace_is_visible_inside_linux`, the Windows-to-Linux path bridge.
+5. `compilers_install_and_really_build_a_program`, installs the C/C++ compiler for real,
    requires every component to compile _and run_ a program, checks a second install does
    not repeat the work, then stops the environment and confirms that reading the tool
    status returns the cached result without restarting it.
-6. `jupyter_launcher_preserves_unsaved_notebooks` — launching from Home must not discard
+6. `jupyter_launcher_preserves_unsaved_notebooks`, launching from Home must not discard
    work open in an existing session.
 
 And in [`system/mod.rs`](../../src-tauri/src/system/mod.rs):
 
-7. `smoke_check_runs_against_this_machine` — runs every real diagnostic against the host
+7. `smoke_check_runs_against_this_machine`, runs every real diagnostic against the host
    and prints the result. This is the one test that deliberately touches the OS.
 
 Run them with
@@ -202,7 +202,7 @@ All 69 live in [`tests/ui/workspace.spec.ts`](../../tests/ui/workspace.spec.ts):
 69. the technical view and diagnostic export are available without leaving setup
 
 Tests 56 to 69 cover the setup-reliability work. They exercise real React, real routing and
-real event plumbing against a fixture that models the backend faithfully — `run_setup`
+real event plumbing against a fixture that models the backend faithfully, `run_setup`
 returns a snapshot immediately and never resolves with an outcome, the mock refuses
 overlapping runs, and its state survives a page reload. They still prove nothing about a
 real elevated install, which has never been executed; see
@@ -210,7 +210,7 @@ real elevated install, which has never been executed; see
 
 Tests 10, 11, 25, 50 and 68 double as screenshot generators, writing into
 [`docs/qa/`](../qa/). Test 68 exists because assertions cannot see layout: reviewing its
-output caught two defects the passing suite did not — a dialog taller than the window
+output caught two defects the passing suite did not: a dialog taller than the window
 growing off the top of the screen with no way to scroll back, and the "Set up SageDock"
 card still sitting below the live progress panel, offering a dead button and a second copy
 of "What happens during setup?". **Read the screenshots when changing these surfaces.**
@@ -224,7 +224,7 @@ status is never rendered as "not installed" and that Home passes `force: false`.
 install anything, and no compiler exists in a Playwright run.
 
 Tests 50 to 54 cover the first-run introduction added in 1.4.3. Because the introduction
-**gates the whole app** — `Root` in `App.tsx` renders it instead of the router — the mock
+**gates the whole app** (`Root` in `App.tsx` renders it instead of the router), the mock
 reports it as already seen by default and the `showOnboarding` fixture option flips that.
 Forgetting to do so fails every UI test at once rather than one.
 

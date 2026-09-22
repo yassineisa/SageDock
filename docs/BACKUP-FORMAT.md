@@ -2,7 +2,7 @@
 
 **Format version 1.** Implemented in [`src-tauri/src/backup.rs`](../src-tauri/src/backup.rs).
 
-A SageDock backup holds a student's own work — workspaces, notebooks, datasets, and
+A SageDock backup holds a student's own work: workspaces, notebooks, datasets, and
 notebook checkpoints. Its purpose is to survive things: a reinstall, a new Windows account,
 a different computer.
 
@@ -114,7 +114,7 @@ Restoring verifies every hash again as it extracts, and fails on the first misma
 
 ## Safety when reading
 
-Every archive is treated as hostile — one can arrive by email. Restoring refuses:
+Every archive is treated as hostile, because one can arrive by email. Restoring refuses:
 
 - entry paths that are absolute, name a drive (`C:`), contain `..` or `.`, contain a
   backslash (ZIP mandates forward slashes, so one means someone is being clever), are empty,

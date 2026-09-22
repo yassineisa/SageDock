@@ -25,7 +25,7 @@ pub const STORE_FORMAT: u32 = 1;
 /// How many downloads are remembered.
 ///
 /// This exists so the file cannot grow without bound over years of use. Entries are dropped
-/// oldest-first, and dropping one only means it stops being listed on Home — the downloaded
+/// oldest-first, and dropping one only means it stops being listed on Home, the downloaded
 /// file itself is never touched.
 const MAX_TRACKED: usize = 200;
 

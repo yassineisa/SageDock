@@ -4,32 +4,38 @@ A Windows desktop app that makes SageMath, Python, and JupyterLab usable without
 terminal. SageDock installs and manages its own Linux runtime, keeps your notebooks in
 ordinary Windows folders, and handles setup, repair, and recovery on your behalf.
 
-Built with Tauri (Rust) + React/TypeScript.
+Built with Tauri (Rust) and React/TypeScript.
 
-## Developer
+## Install
 
-SageDock is developed by **Yassin Eisa**.
+Download the latest `.msi` from [Releases](../../releases/latest) and run it.
 
-## License
+The installer is signed with Microsoft Azure Artifact Signing and published by Yassin
+Eisa, so Windows shows that publisher name rather than "Unknown publisher". It is about
+1.4 GB because it bundles the complete SageMath, Python, and Jupyter runtime, which means
+installation works offline.
 
-SageDock's original code is released under the MIT License — see [`LICENSE`](LICENSE).
+Requirements: Windows 10 build 19041 or newer, 64-bit, with virtualisation available.
+SageDock sets up WSL 2 itself if it is missing, which needs administrator permission once
+and may ask you to restart.
 
-> Copyright (c) 2026 Yassin Eisa
+To verify a download before running it:
 
-The MIT license covers SageDock's own source code only. The bundled SageMath runtime and
-every other third-party component retain their own licenses and copyright holders; see
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+```powershell
+signtool verify /pa /v .\SageDock_1.4.6_x64_en-US.msi
+```
 
 ## Where your work lives
 
-Notebooks are stored in ordinary Windows folders — by default under
-`Documents\SageDock` — deliberately _outside_ the Linux runtime. The runtime is treated as
-disposable infrastructure that repair and reinstall may replace at any time; your files are
-not. They stay visible in File Explorer and get picked up by whatever backup tool you
-already use.
+Notebooks are stored in ordinary Windows folders, by default under `Documents\SageDock`,
+deliberately _outside_ the Linux runtime. The runtime is treated as disposable
+infrastructure that repair and reinstall may replace at any time. Your files are not.
+They stay visible in File Explorer and get picked up by whatever backup tool you already
+use.
 
 You can keep several **workspaces** (for example `Calculus`, `Physics`, `Statistics`).
-Each one is a plain folder you can move, copy, or back up yourself.
+Each one is a plain folder you can move, copy, or back up yourself. Dragging files from
+Windows onto a workspace card copies them into that folder.
 
 **Open JupyterLab** is the main Home action. It opens JupyterLab's own landing page
 directly, without creating a notebook or asking you to choose a workspace. It is always
@@ -101,7 +107,7 @@ account of what the tests do and do not establish.
 
 **Picking this up as a coding agent, or as a new contributor?** Start with
 [`coding agent onboarding/`](coding%20agent%20onboarding/README.md), and in particular
-[REPO_CONTEXT.md](coding%20agent%20onboarding/REPO_CONTEXT.md) — a detailed guide to the
+[REPO_CONTEXT.md](coding%20agent%20onboarding/REPO_CONTEXT.md), a detailed guide to the
 architecture, dependencies, core logic, invariants, and validation gate. That folder also
 collects the product specification and every previous handoff document.
 
@@ -112,3 +118,17 @@ The rest of [`docs/`](docs/) holds the two current, binding specifications: the
 ## Recommended IDE setup
 
 - [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+
+## License
+
+SageDock's original code is released under the MIT License. See [`LICENSE`](LICENSE).
+
+> Copyright (c) 2026 Yassin Eisa
+
+The MIT license covers SageDock's own source code only. The bundled SageMath runtime and
+every other third-party component retain their own licenses and copyright holders; see
+[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
+
+## Developer
+
+SageDock is developed by **Yassin Eisa**.

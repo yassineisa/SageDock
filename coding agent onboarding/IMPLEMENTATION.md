@@ -1,4 +1,4 @@
-# Implementation notes — environment shutdown, backups, workspaces, licensing
+# Implementation notes, environment shutdown, backups, workspaces, licensing
 
 > Historical record of the initial implementation. The subsequent review found and fixed
 > safety and lifecycle problems described here. Read [QA-REVIEW.md](QA-REVIEW.md) for the
@@ -19,13 +19,13 @@ confirms first, warning that unsaved notebook changes may be lost.
 Three decisions worth keeping:
 
 **Status is observed, not remembered.** `distro_is_running()` runs
-`wsl.exe --list --running --quiet`. `--quiet` prints bare distribution names — no header, no
-localized prose — which is why comparing it does not violate the module's rule against
+`wsl.exe --list --running --quiet`. `--quiet` prints bare distribution names, no header, no
+localized prose, which is why comparing it does not violate the module's rule against
 parsing `wsl.exe` output. Exit code alone cannot answer the question: it is non-zero both
 when nothing is running and when something failed.
 
 **Only SageDock's own distribution is stopped.** Every stop path is
-`wsl --terminate <name>`. `wsl --shutdown` is never called anywhere — it would stop every
+`wsl --terminate <name>`. `wsl --shutdown` is never called anywhere, it would stop every
 distribution on the machine, including someone's unrelated work. Verified by search: the
 string `--shutdown` appears in exactly two places in the repository, both comments
 explaining why it is not used.
@@ -44,7 +44,7 @@ next notebook or workspace launch brings the environment back automatically.
 
 A workspace is an ordinary Windows folder. SageDock records where it is and when it was last
 opened, and nothing else. New ones are created under
-`Documents\SageDock Workspaces\<Name>` — a **sibling** of the default `Documents\SageDock`,
+`Documents\SageDock Workspaces\<Name>`, a **sibling** of the default `Documents\SageDock`,
 not a child. Nesting would make every workspace appear inside the default workspace's file
 browser and be counted twice in a backup.
 
@@ -64,7 +64,7 @@ destination exists, and the `id` survives so the active selection is not lost.
 nothing on disk; the confirmation says so explicitly. The last workspace cannot be removed.
 
 **Missing, moved, or inaccessible folders** are classified per-read as `available`,
-`missing`, or `unreadable` — three states rather than a boolean, because "the folder is
+`missing`, or `unreadable`, three states rather than a boolean, because "the folder is
 gone" and "the folder is there but unreadable" need different advice. The card states the
 problem in words and disables the actions that would fail. `active_workspace_dir()` falls
 back to the default workspace if the active one has vanished.
@@ -81,7 +81,7 @@ Capped at `MAX_LIVE_SERVERS = 6`.
 in [`BACKUP-FORMAT.md`](../docs/BACKUP-FORMAT.md).
 
 Create and Restore sit on Home under _Backups_. Both use native pickers opened by the
-backend — the webview never supplies a filesystem path. The chosen backup is held in
+backend, the webview never supplies a filesystem path. The chosen backup is held in
 `AppState.selected_backup` between previewing and restoring, so restore needs no path from
 the frontend.
 
@@ -100,7 +100,7 @@ untouched.
 
 Three problems from the earlier code review were in the path of this work and are now fixed:
 
-- **`new_notebook` was half-gutted** by a mechanical edit script — it started a Jupyter
+- **`new_notebook` was half-gutted** by a mechanical edit script, it started a Jupyter
   server before creating the file, and contained an unreachable environment check. It now
   health-checks, creates the file, and returns; _opening_ starts the server, which removes a
   duplicated server start per notebook.
@@ -112,8 +112,8 @@ Three problems from the earlier code review were in the path of this work and ar
 ## Visual redesign
 
 Outside this document's scope, and recorded elsewhere. The interface was rebuilt twice
-after this document was written: first on an editorial system in 1.1.1, then — replacing it
-— on **Metro principles with Windows 11 / Fluent conventions** in 1.1.3, which is what ships
+after this document was written: first on an editorial system in 1.1.1, then, replacing it,
+on **Metro principles with Windows 11 / Fluent conventions** in 1.1.3, which is what ships
 today.
 
 [`DESIGN.md`](../docs/DESIGN.md) specifies the current system only; [`QA-REVIEW.md`](QA-REVIEW.md)
@@ -134,7 +134,7 @@ The repository has no commits, so `git status` cannot produce a diff. Enumerated
 `src-tauri/src/commands.rs`, `src-tauri/src/desktop.rs`, `src-tauri/src/lib.rs`,
 `src-tauri/src/runtime/wsl.rs` (`distro_is_running`), `src-tauri/src/jupyter/mod.rs`
 (`RunningServer.root`), `src/lib/commands.ts`, `src/pages/Home.tsx`, `src/pages/Help.tsx`,
-`tests/ui/workspace.spec.ts`, `README.md`, and — rewritten wholesale for the redesign —
+`tests/ui/workspace.spec.ts`, `README.md`, and, rewritten wholesale for the redesign,
 `src/styles/theme.css` and `src/styles/layout.css`.
 
 Untouched by design: the logo, setup/provisioning, recovery, diagnostics, the backup format,
@@ -148,7 +148,7 @@ Measured on 2026-09-17, on the development machine.
 | Suite                          | Result                                                                |
 | ------------------------------ | --------------------------------------------------------------------- |
 | `cargo test`                   | **158 passed, 0 failed, 5 ignored** (163 total; 109 before this work) |
-| `cargo check --all-targets`    | clean — no errors, no warnings                                        |
+| `cargo check --all-targets`    | clean, no errors, no warnings                                         |
 | `npm run build` (`tsc` + vite) | clean                                                                 |
 | `npm run test:ui` (Playwright) | **9 passed**                                                          |
 
@@ -161,7 +161,7 @@ New coverage includes Windows name rules and reserved devices; forget-keeps-ever
 rename carries files and refuses collisions; corrupt and newer-version workspace lists;
 active-workspace fallback; operation labelling; the backup round trip (real ZIP written,
 verified, restored alongside the original); and four archive-safety tests built byte-by-byte
-so they cannot pass vacuously — wrong checksum, entry outside its workspace, missing entry,
+so they cannot pass vacuously, wrong checksum, entry outside its workspace, missing entry,
 and a backup from a newer SageDock.
 
 **Mocked versus real.** The Playwright tests stub every IPC call. They prove the screens
@@ -169,17 +169,17 @@ render, wire up, confirm destructive actions, and stay keyboard-reachable in lig
 They prove **nothing** about WSL, SageMath, real backups, or real folders. The Rust tests are
 unit-level against temporary directories. The real stack is exercised only by
 `scripts/test-fresh-install.ps1`. It had not been run when this section was written; it has
-since passed — see [`QA-REVIEW.md`](QA-REVIEW.md) for that run and what it actually covered.
+since passed, see [`QA-REVIEW.md`](QA-REVIEW.md) for that run and what it actually covered.
 
 ## Limitations and what is not verified
 
-**Superseded — do not rely on the paragraph this replaces.** When this was written, nothing
+**Superseded, do not rely on the paragraph this replaces.** When this was written, nothing
 had been exercised on real hardware. That is no longer true: `scripts/test-fresh-install.ps1`
 has since passed against a real disposable distribution, covering stop, relaunch, two
 concurrent workspace servers, and both kernels executing again after restart.
 
 [`QA-REVIEW.md`](QA-REVIEW.md) is authoritative for what that run proved and what genuinely
-remains unverified — which still includes real backup/restore of a large workspace, restoring
+remains unverified, which still includes real backup/restore of a large workspace, restoring
 into a fresh configuration on a second machine, and **clean-Windows compatibility, which is
 untested and must not be claimed**.
 
@@ -187,7 +187,7 @@ Known limitations in what was built:
 
 - **Rename is conservatively blocked** whenever _any_ notebook server is alive, not only one
   rooted in the workspace being renamed. Correct but coarser than necessary.
-- **Backups are always full copies** — no incremental or deduplicated mode. A 10 GB
+- **Backups are always full copies**, no incremental or deduplicated mode. A 10 GB
   workspace produces a roughly 10 GB file.
 - **Change detection during backup is size + mtime.** A modification within the same second
   that leaves the size identical could slip through.
@@ -208,7 +208,7 @@ Still open from the earlier review, untouched here:
 
 Both live in [`QA-REVIEW.md`](QA-REVIEW.md), which supersedes this document for packaging,
 measured results, and next steps. In short: a verified 1.1.1 MSI has been built but not
-installed anywhere, and the repository still has **zero commits** — everything described
+installed anywhere, and the repository still has **zero commits**, everything described
 here exists only as working files on one machine.
 
 When bumping versions, change `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`,

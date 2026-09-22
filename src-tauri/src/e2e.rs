@@ -66,7 +66,7 @@ fn installs_a_package_and_opens_a_sage_notebook() {
 
     assert!(
         image.is_file(),
-        "no runtime image at {} — build one with scripts/build-runtime.ps1",
+        "no runtime image at {}, build one with scripts/build-runtime.ps1",
         image.display()
     );
 
@@ -178,7 +178,7 @@ fn installs_a_package_and_opens_a_sage_notebook() {
             );
         }
         Err(other) => panic!("unexpected error on unauthenticated request: {other}"),
-        Ok(_) => panic!("notebook API answered without a token — the session is unprotected"),
+        Ok(_) => panic!("notebook API answered without a token, the session is unprotected"),
     }
 
     println!("SAGE NOTEBOOK OPENED SUCCESSFULLY");
@@ -277,7 +277,7 @@ fn installed_environment_reports_sage_and_kernels() {
     assert!(kernels.contains("python3"), "no python3 kernel: {kernels}");
 }
 
-/// A path containing characters a shell would treat as syntax must survive intact — the
+/// A path containing characters a shell would treat as syntax must survive intact, the
 /// bug that `--exec` fixes.
 #[test]
 #[ignore]

@@ -1,7 +1,7 @@
 //! Which web browsers are installed on this PC, so first-run setup can offer a real choice
 //! instead of only "your default browser".
 //!
-//! Windows records every installed browser under `SOFTWARE\Clients\StartMenuInternet` —
+//! Windows records every installed browser under `SOFTWARE\Clients\StartMenuInternet`,
 //! the same list the Settings app's "Default apps" page reads. Both hives are consulted
 //! because a browser installed for one user only appears under `HKEY_CURRENT_USER`, and a
 //! machine-wide one under `HKEY_LOCAL_MACHINE`.
@@ -12,8 +12,8 @@
 //!
 //! **The frontend never names an executable.** It sends back one of the identifiers this
 //! module handed out, and [`open`] re-resolves that identifier against the registry to find
-//! the program to run. That keeps the rule the rest of the codebase follows — the webview
-//! cannot name a file for SageDock to execute — intact for this feature too.
+//! the program to run. That keeps the rule the rest of the codebase follows, the webview
+//! cannot name a file for SageDock to execute, intact for this feature too.
 
 use std::path::PathBuf;
 
@@ -31,7 +31,7 @@ pub struct Browser {
     /// readable name such as `Google Chrome`, but some installers use a suffixed key like
     /// `Firefox-308046B0AF4A39CB`, which is why it is kept apart from the display name.
     pub id: String,
-    /// What to show the student — the key's default value, falling back to the identifier.
+    /// What to show the student, the key's default value, falling back to the identifier.
     pub name: String,
 }
 
@@ -77,7 +77,7 @@ pub fn installed() -> Vec<Browser> {
 /// Opens a URL in one specific installed browser.
 ///
 /// The identifier is resolved back to an executable here rather than being taken on trust,
-/// and the URL is passed as a single argument to the program — never through a shell, and
+/// and the URL is passed as a single argument to the program, never through a shell, and
 /// never concatenated into a command string, the same rule `wsl.rs` follows.
 pub fn open(id: &str, url: &str) -> AppResult<()> {
     let exe = locate(id).ok_or_else(|| missing_browser_error(id))?;

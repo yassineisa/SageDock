@@ -14,7 +14,7 @@ made by this pass and that replacement installer has not been verified by this a
 
   > **Superseded in two ways** by the later tools-and-launcher pass; see
   > [TOOLS-LAUNCHER-HANDOFF.md](TOOLS-LAUNCHER-HANDOFF.md). The button no longer follows the
-  > last-launched course folder — it is always rooted at `Documents\SageDock` — and it now
+  > last-launched course folder, it is always rooted at `Documents\SageDock`, and it now
   > opens JupyterLab's `/lab` landing route rather than `/lab/tree/`, which is the file
   > browser. It also uses a dedicated `open_jupyter_home` command instead of
   > `open_notebook("")`.

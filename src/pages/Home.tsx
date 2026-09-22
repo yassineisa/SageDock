@@ -113,7 +113,7 @@ export function Home() {
   }, [task.busy]);
 
   // Setup itself is no longer subscribed to here. It belongs to `SetupProvider`, which
-  // outlives this screen — Home is one of several observers and holds none of the state.
+  // outlives this screen, Home is one of several observers and holds none of the state.
   // What Home does still need is to re-read *its own* data when setup reaches an end, so
   // the workspace list and environment status reflect the newly installed runtime.
   const setupPhase = setup.snapshot?.phase;
@@ -131,7 +131,7 @@ export function Home() {
   // What the last drop from Windows did. Declared beside the effect that sets it.
   const [dropped, setDropped] = useState<FilesDropped | null>(null);
 
-  // Lets a student know when something new lands in Downloads — the built-in Sage browser
+  // Lets a student know when something new lands in Downloads, the built-in Sage browser
   // saves there like any other browser would. There is no stable hook into WebView2's own
   // download plumbing, so this polls the same folder the Downloads section already reads
   // and reports the difference. A short interval rather than an instant push is a fair
@@ -306,7 +306,7 @@ export function Home() {
 
   // A notebook from Downloads or the "Open notebook" picker could belong to any workspace,
   // so opening either is a two-step choice rather than a single click: which workspace,
-  // then — only if that workspace already has a notebook by this name — what to do about
+  // then, only if that workspace already has a notebook by this name, what to do about
   // it. Both sources share this flow, so a notebook behaves the same regardless of where it
   // came from.
   const [pendingImport, setPendingImport] = useState<
@@ -386,7 +386,7 @@ export function Home() {
   };
 
   // Deleting sends a notebook to the Recycle Bin rather than unlinking it, so a mistaken
-  // click doesn't cost real work — the same margin Explorer itself gives.
+  // click doesn't cost real work, the same margin Explorer itself gives.
   const [deletingRecent, setDeletingRecent] = useState<NotebookEntry | null>(null);
   const confirmDeleteRecent = () => {
     const entry = deletingRecent;
@@ -412,15 +412,15 @@ export function Home() {
       return `${entry.name} was moved to the Recycle Bin.`;
     });
   };
-  // Opens with whatever Windows already associates with the file — a quick look, not an
-  // import — so a student can check a download without deciding where it belongs yet.
+  // Opens with whatever Windows already associates with the file, a quick look, not an
+  // import, so a student can check a download without deciding where it belongs yet.
   const openDownloadExternally = (entry: NotebookEntry) =>
     void task.run("Opening file", () => commands.openDownloadedFileExternally(entry.path));
   const revealDownload = (entry: NotebookEntry) =>
     void task.run("Opening folder", () => commands.revealDownloadedFile(entry.path));
 
-  // Downloads change outside SageDock — a browser writes a file while Home is already on
-  // screen — so this re-reads just that folder rather than reloading the whole page.
+  // Downloads change outside SageDock, a browser writes a file while Home is already on
+  // screen, so this re-reads just that folder rather than reloading the whole page.
   const refreshDownloads = () =>
     void task.run("Checking your Downloads folder", async () => {
       const found = await commands.downloadedNotebooks();
@@ -485,7 +485,7 @@ export function Home() {
   const visibleRecent = search ? found : found.slice(0, 6);
 
   // Options for the workspace-picker dialog. Unavailable folders stay listed, disabled and
-  // explained, the same way WorkspaceCard disables Launch workspace for them — a student
+  // explained, the same way WorkspaceCard disables Launch workspace for them, a student
   // should see a workspace exists even on the one visit it can't be used.
   const workspaceOptions: ChoiceOption[] = workspaces.map((w) => ({
     key: w.id,
@@ -551,7 +551,7 @@ export function Home() {
 
       {/* Deliberately outside the "needs setup" card below. That card is hidden once the
           environment is ready or a health problem is showing, and a setup run has to stay
-          visible through both — including the moment it succeeds, when `ready` flips and
+          visible through both, including the moment it succeeds, when `ready` flips and
           the card disappears out from under it. */}
       {setup.snapshot && setup.snapshot.phase !== "idle" && (
         <SetupProgress snapshot={setup.snapshot} onExplain={() => setExplaining(true)} />
@@ -621,8 +621,8 @@ export function Home() {
 
       {/* Hidden while a run is in flight. The progress panel above already says what is
           happening and offers the explanation, so leaving this up put a disabled "Set up
-          SageDock" and a second identical "What happens during setup?" on the same screen
-          — two controls for one thing, one of them dead. It returns for a failed or
+          SageDock" and a second identical "What happens during setup?" on the same screen,
+          two controls for one thing, one of them dead. It returns for a failed or
           interrupted run, which is exactly when the retry button is wanted again. */}
       {status && !ready && !status.problem && !setupActive && (
         <section className="card">
@@ -1163,7 +1163,7 @@ export function Home() {
 
       {/* Renaming moves the folder, so a notebook open inside it stops the rename. This is
           a pop-up rather than a banner because it answers a question the user has just
-          asked — they typed a name and pressed Save — and the answer is actionable. */}
+          asked, they typed a name and pressed Save, and the answer is actionable. */}
       {renameBlocked && (
         <ConfirmDialog
           title="SageMath is using this workspace"

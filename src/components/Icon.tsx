@@ -8,7 +8,7 @@
  *
  * Every glyph is referenced through this map rather than inline escapes. The codepoints are
  * private-use characters, so a wrong one renders as an empty box rather than failing
- * loudly — keeping them in one verified table is what stops that spreading.
+ * loudly, keeping them in one verified table is what stops that spreading.
  *
  * Icons are always decorative here: each is `aria-hidden`, and every control that uses one
  * carries its own visible text or `aria-label`. That also keeps icon glyphs out of

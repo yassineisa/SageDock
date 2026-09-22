@@ -2,7 +2,7 @@
 //!
 //! Per the product spec, every user-facing failure must answer: what happened,
 //! is my work safe, can SageDock fix it, and what should the user do next. Commands
-//! must never return raw process output or bare strings — everything funnels through
+//! must never return raw process output or bare strings, everything funnels through
 //! `AppError` so the frontend can render a consistent, friendly error screen and log
 //! the technical detail separately.
 
@@ -32,7 +32,7 @@ pub struct RecoveryAction {
 }
 
 /// A structured, user-safe error. Every field the UI needs to render a friendly
-/// error screen lives here — the frontend should never need to parse `technical_details`
+/// error screen lives here, the frontend should never need to parse `technical_details`
 /// to decide what to show.
 #[derive(Debug, Clone, Serialize)]
 pub struct AppError {
@@ -47,7 +47,7 @@ pub struct AppError {
     /// Whether the user's notebooks/projects are known to be unaffected by this failure.
     /// Defaults to `true`; operations that may affect saved user files must override it.
     pub user_files_safe: bool,
-    /// Which backend area raised this (e.g. "config", "logging") — mirrors the log categories.
+    /// Which backend area raised this (e.g. "config", "logging"), mirrors the log categories.
     pub component: String,
     /// Actions the UI can offer, ordered least to most invasive. Empty when no automated
     /// recovery exists yet.
